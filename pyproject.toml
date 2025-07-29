@@ -1,0 +1,184 @@
+[build-system]
+requires = ["hatchling>=1.5.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "async-toolformer-orchestrator"
+version = "0.1.0"
+description = "Asyncio runtime that lets a single LLM call many tools in parallel while respecting rate limits and cancelling stale branches"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Daniel Schmidt", email = "async-tools@yourdomain.com"},
+]
+maintainers = [
+    {name = "Daniel Schmidt", email = "async-tools@yourdomain.com"},
+]
+keywords = [
+    "asyncio",
+    "llm",
+    "tools",
+    "parallel",
+    "orchestrator",
+    "openai",
+    "gpt4",
+    "rate-limiting",
+    "async"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Framework :: AsyncIO",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "asyncio-compat>=0.2.0; python_version<'3.11'",
+    "aiohttp>=3.9.0",
+    "openai>=1.35.0",
+    "aiolimiter>=1.1.0",
+    "pydantic>=2.0.0",
+    "tenacity>=8.2.0",
+    "structlog>=24.0.0",
+]
+
+[project.optional-dependencies]
+full = [
+    "async-toolformer-orchestrator[redis,metrics,tracing,optimization]"
+]
+redis = [
+    "redis>=5.0.0",
+]
+metrics = [
+    "prometheus-client>=0.20.0",
+]
+tracing = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-exporter-jaeger>=1.20.0",
+]
+optimization = [
+    "uvloop>=0.19.0",
+]
+anthropic = [
+    "anthropic>=0.30.0",
+]
+dev = [
+    "async-toolformer-orchestrator[full,anthropic]",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.12.0",
+    "pytest-xdist>=3.5.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+    "coverage[toml]>=7.4.0",
+    "sphinx>=7.2.0",
+    "sphinx-rtd-theme>=2.0.0",
+    "myst-parser>=2.0.0",
+]
+
+[project.urls]
+Documentation = "https://async-toolformer.readthedocs.io"
+Repository = "https://github.com/yourusername/async-toolformer-orchestrator"
+"Bug Tracker" = "https://github.com/yourusername/async-toolformer-orchestrator/issues"
+Changelog = "https://github.com/yourusername/async-toolformer-orchestrator/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/async_toolformer/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/async_toolformer"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+]
+ignore = [
+    "E501",  # line too long, handled by formatter
+    "B008",  # do not perform function calls in argument defaults
+    "B904",  # use raise from to specify exception cause
+]
+
+[tool.ruff.per-file-ignores]
+"tests/**/*" = ["ARG", "S101"]
+
+[tool.ruff.isort]
+known-first-party = ["async_toolformer"]
+
+[tool.mypy]
+python_version = "3.10"
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = [
+    "--strict-config",
+    "--strict-markers",
+    "--cov=async_toolformer",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=85",
+]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/examples/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
