@@ -1,0 +1,114 @@
+name: ✨ Feature Request
+description: Suggest a new feature for async-toolformer-orchestrator
+title: "[FEATURE] "
+labels: ["enhancement", "needs-triage"]
+assignees:
+  - danieleschmidt
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new feature! Please fill out the form below to help us understand your request.
+
+  - type: checkboxes
+    id: search
+    attributes:
+      label: Search existing issues
+      description: Please search existing issues to avoid duplicates
+      options:
+        - label: I have searched existing issues and this is not a duplicate
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Description
+      description: What problem does this feature solve? What's the use case?
+      placeholder: |
+        I'm trying to accomplish... but currently it's difficult because...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your ideal solution or feature
+      placeholder: |
+        I would like to be able to...
+        This could work by...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What alternatives have you considered?
+      placeholder: |
+        I've tried... but it doesn't work because...
+        Another approach could be... but...
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Code Example
+      description: Show how you'd like to use this feature
+      render: python
+      placeholder: |
+        # Example of how the feature might be used
+        from async_toolformer import AsyncOrchestrator
+        
+        orchestrator = AsyncOrchestrator(
+            # new feature configuration
+        )
+        
+        result = await orchestrator.new_feature_method()
+
+  - type: checkboxes
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - label: Critical - Blocking my project
+        - label: High - Would significantly improve my workflow
+        - label: Medium - Nice to have
+        - label: Low - Minor improvement
+
+  - type: checkboxes
+    id: implementation
+    attributes:
+      label: Implementation
+      description: Are you willing to help implement this feature?
+      options:
+        - label: I can implement this feature and submit a PR
+        - label: I can help with testing and feedback
+        - label: I can help with documentation
+        - label: I need someone else to implement this
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any additional context, mockups, or information
+      placeholder: |
+        Related links, similar features in other libraries, etc.
+
+  - type: checkboxes
+    id: category
+    attributes:
+      label: Feature Category
+      description: What category does this feature fall into?
+      options:
+        - label: Core Orchestration
+        - label: Tool Management
+        - label: Rate Limiting
+        - label: Performance/Optimization
+        - label: Monitoring/Observability
+        - label: Developer Experience
+        - label: Documentation
+        - label: Testing
+        - label: Security
+        - label: Other

@@ -1,0 +1,155 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: async-toolformer-orchestrator
+  namespace: async-toolformer
+  labels:
+    app.kubernetes.io/name: async-toolformer-orchestrator
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/component: orchestrator
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: async-toolformer-orchestrator
+      app.kubernetes.io/component: orchestrator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: async-toolformer-orchestrator
+        app.kubernetes.io/component: orchestrator
+        app.kubernetes.io/version: "0.1.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: async-toolformer-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: orchestrator
+        image: async-toolformer/orchestrator:0.1.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: REDIS_URL
+          value: "redis://async-toolformer-redis:6379"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys
+              key: openai-api-key
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys
+              key: anthropic-api-key
+        - name: PROMETHEUS_ENDPOINT
+          value: "http://prometheus:9090"
+        - name: JAEGER_ENDPOINT
+          value: "http://jaeger-collector:14268"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        - name: logs
+          mountPath: /app/logs
+        - name: data
+          mountPath: /app/data
+      volumes:
+      - name: config
+        configMap:
+          name: async-toolformer-config
+      - name: logs
+        emptyDir: {}
+      - name: data
+        persistentVolumeClaim:
+          claimName: async-toolformer-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: async-toolformer-orchestrator
+  namespace: async-toolformer
+  labels:
+    app.kubernetes.io/name: async-toolformer-orchestrator
+    app.kubernetes.io/component: orchestrator
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: async-toolformer-orchestrator
+    app.kubernetes.io/component: orchestrator
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: async-toolformer-sa
+  namespace: async-toolformer
+  labels:
+    app.kubernetes.io/name: async-toolformer-orchestrator
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: async-toolformer-data
+  namespace: async-toolformer
+  labels:
+    app.kubernetes.io/name: async-toolformer-orchestrator
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: gp2  # Adjust based on your cluster

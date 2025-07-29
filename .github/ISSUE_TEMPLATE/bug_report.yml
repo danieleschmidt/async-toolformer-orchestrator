@@ -1,0 +1,131 @@
+name: 🐛 Bug Report
+description: Report a bug in async-toolformer-orchestrator
+title: "[BUG] "
+labels: ["bug", "needs-triage"]
+assignees:
+  - danieleschmidt
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please fill out the form below to help us understand and fix the issue.
+
+  - type: checkboxes
+    id: search
+    attributes:
+      label: Search existing issues
+      description: Please search existing issues to avoid duplicates
+      options:
+        - label: I have searched existing issues and this is not a duplicate
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Describe what happened...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Provide step-by-step instructions to reproduce the bug
+      placeholder: |
+        1. Create orchestrator with...
+        2. Execute tools with...
+        3. Observe error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: Describe the expected behavior...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened? Include error messages and stack traces
+      placeholder: |
+        Error message:
+        Stack trace:
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Minimal Code Example
+      description: Provide a minimal code example that reproduces the issue
+      render: python
+      placeholder: |
+        import asyncio
+        from async_toolformer import AsyncOrchestrator
+        
+        # Your minimal reproduction code here
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Package Version
+      description: What version of async-toolformer-orchestrator are you using?
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      description: What version of Python are you using?
+      placeholder: "3.11.5"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      placeholder: "macOS 14.0, Ubuntu 22.04, Windows 11"
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Related Dependencies
+      description: List relevant dependency versions (openai, anthropic, etc.)
+      placeholder: |
+        openai==1.35.0
+        anthropic==0.30.0
+        aiohttp==3.9.0
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any additional context, screenshots, or information
+      placeholder: Add any other context about the problem here...
+
+  - type: checkboxes
+    id: severity
+    attributes:
+      label: Severity
+      description: How severe is this bug?
+      options:
+        - label: Critical - Application crashes or data loss
+        - label: High - Major functionality broken
+        - label: Medium - Minor functionality issue
+        - label: Low - Cosmetic or documentation issue
