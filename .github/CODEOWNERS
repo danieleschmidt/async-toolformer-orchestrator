@@ -1,20 +1,37 @@
 # Global code ownership
-* @danieleschmidt
+* @danieleschmidt @async-toolformer-team
 
-# Core orchestrator components
-/src/async_toolformer/orchestrator.py @danieleschmidt
+# Core orchestrator components - require architecture review
+/src/async_toolformer/ @danieleschmidt @architecture-team
+/src/async_toolformer/orchestrator.py @danieleschmidt @architecture-team
 /src/async_toolformer/tools.py @danieleschmidt
 /src/async_toolformer/config.py @danieleschmidt
 
-# Security-sensitive files
-/SECURITY.md @danieleschmidt
-/.github/workflows/ @danieleschmidt
-/pyproject.toml @danieleschmidt
+# Security-sensitive files - require security team review
+/SECURITY.md @danieleschmidt @security-team
+/.github/workflows/security.yml @danieleschmidt @security-team
+/docs/compliance/ @danieleschmidt @security-team @compliance-team
+/scripts/sbom/ @security-team @danieleschmidt
+/pyproject.toml @danieleschmidt @architecture-team
 
-# Documentation
-/README.md @danieleschmidt
-/docs/ @danieleschmidt
-*.md @danieleschmidt
+# Infrastructure and deployment - require DevOps review
+/k8s/ @danieleschmidt @devops-team @platform-team
+/docker-compose*.yml @danieleschmidt @devops-team
+/Dockerfile @danieleschmidt @devops-team @security-team
+/.github/workflows/ @danieleschmidt @devops-team
+/config/ @danieleschmidt @devops-team
+
+# Documentation - require docs team review
+/README.md @danieleschmidt @docs-team
+/docs/ @danieleschmidt @docs-team
+*.md @danieleschmidt @docs-team
+
+# Architecture decisions - require architecture consensus
+/docs/architecture/ @architecture-team @danieleschmidt
+
+# Performance and benchmarking - require performance team
+/scripts/performance/ @danieleschmidt @performance-team @architecture-team
+/docs/benchmarks/ @danieleschmidt @performance-team
 
 # CI/CD and tooling
 /.pre-commit-config.yaml @danieleschmidt
@@ -22,5 +39,10 @@
 /.github/ @danieleschmidt
 
 # Testing infrastructure
-/tests/ @danieleschmidt
+/tests/ @danieleschmidt @test-team
 /conftest.py @danieleschmidt
+
+# Observability and monitoring - require platform team
+/observability/ @danieleschmidt @platform-team @devops-team
+/config/grafana/ @danieleschmidt @platform-team
+/config/prometheus.yml @danieleschmidt @platform-team
