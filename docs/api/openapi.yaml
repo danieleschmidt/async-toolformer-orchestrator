@@ -1,0 +1,292 @@
+openapi: 3.0.3
+info:
+  title: Async Toolformer Orchestrator API
+  description: |
+    High-performance async orchestrator for parallel LLM tool execution.
+    
+    This API enables calling multiple tools in parallel while respecting
+    rate limits and providing real-time result streaming.
+  version: 0.1.0
+  contact:
+    name: Async Toolformer Team
+    email: async-tools@yourdomain.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.async-toolformer.com/v1
+    description: Production server
+  - url: https://staging.async-toolformer.com/v1
+    description: Staging server
+
+paths:
+  /orchestrator/execute:
+    post:
+      summary: Execute tools in parallel
+      description: |
+        Execute multiple tools based on LLM decision with parallel execution,
+        rate limiting, and result streaming capabilities.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteRequest'
+      responses:
+        '200':
+          description: Execution completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitError'
+
+  /orchestrator/stream:
+    post:
+      summary: Execute with streaming results
+      description: |
+        Execute tools with real-time streaming of partial results
+        as they complete.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StreamRequest'
+      responses:
+        '200':
+          description: Streaming response
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/StreamEvent'
+
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  schemas:
+    ExecuteRequest:
+      type: object
+      required:
+        - prompt
+      properties:
+        prompt:
+          type: string
+          description: Natural language instruction for tool execution
+          example: "Search for Python async patterns and analyze our codebase"
+        tools:
+          type: array
+          items:
+            type: string
+          description: Optional list of allowed tools
+          example: ["web_search", "code_analyzer"]
+        max_parallel:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+          description: Maximum number of parallel tool executions
+        timeout_ms:
+          type: integer
+          minimum: 1000
+          maximum: 300000
+          default: 60000
+          description: Total execution timeout in milliseconds
+        enable_speculation:
+          type: boolean
+          default: true
+          description: Enable speculative tool execution
+
+    ExecuteResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolResult'
+        execution_time_ms:
+          type: integer
+          description: Total execution time
+        tools_executed:
+          type: integer
+          description: Number of tools executed
+        parallel_efficiency:
+          type: number
+          format: float
+          description: Parallelization efficiency (0.0-1.0)
+
+    StreamRequest:
+      type: object
+      required:
+        - prompt
+      properties:
+        prompt:
+          type: string
+          description: Natural language instruction
+        config:
+          $ref: '#/components/schemas/OrchestratorConfig'
+
+    StreamEvent:
+      type: object
+      properties:
+        event:
+          type: string
+          enum: [tool_started, tool_completed, tool_failed, execution_complete]
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/ToolResult'
+            - $ref: '#/components/schemas/ExecutionSummary'
+
+    ToolResult:
+      type: object
+      properties:
+        tool_name:
+          type: string
+          description: Name of the executed tool
+        arguments:
+          type: object
+          description: Arguments passed to the tool
+        result:
+          description: Tool execution result
+        execution_time_ms:
+          type: integer
+          description: Tool execution time
+        status:
+          type: string
+          enum: [success, failed, timeout, cancelled]
+        error:
+          type: string
+          description: Error message if status is failed
+
+    OrchestratorConfig:
+      type: object
+      properties:
+        max_parallel:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        timeout_ms:
+          type: integer
+          minimum: 1000
+          maximum: 300000
+          default: 60000
+        rate_limits:
+          $ref: '#/components/schemas/RateLimitConfig'
+
+    RateLimitConfig:
+      type: object
+      properties:
+        global_max:
+          type: integer
+          description: Global requests per second
+        service_limits:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ServiceLimit'
+
+    ServiceLimit:
+      type: object
+      properties:
+        requests:
+          type: integer
+          description: Requests per second
+        tokens:
+          type: integer
+          description: Tokens per minute
+
+    ExecutionSummary:
+      type: object
+      properties:
+        total_execution_time_ms:
+          type: integer
+        tools_executed:
+          type: integer
+        success_rate:
+          type: number
+          format: float
+        parallel_efficiency:
+          type: number
+          format: float
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        version:
+          type: string
+        uptime_seconds:
+          type: integer
+        active_executions:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+
+    RateLimitError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            retry_after_seconds:
+              type: integer
+              description: Seconds to wait before retrying
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+security:
+  - ApiKeyAuth: []
+
+tags:
+  - name: orchestrator
+    description: Core orchestration operations
+  - name: monitoring
+    description: Health and metrics endpoints
