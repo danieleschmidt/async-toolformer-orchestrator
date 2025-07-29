@@ -1,0 +1,201 @@
+# Structured logging configuration for async-toolformer-orchestrator
+
+# Logging levels by component
+loggers:
+  async_toolformer:
+    level: INFO
+    handlers: [console, file, structured]
+    propagate: false
+    
+  async_toolformer.orchestrator:
+    level: DEBUG
+    handlers: [console, file, structured]
+    
+  async_toolformer.tools:
+    level: INFO  
+    handlers: [console, file, structured]
+    
+  async_toolformer.rate_limiter:
+    level: WARNING
+    handlers: [console, file, structured]
+    
+  # Third-party loggers
+  openai:
+    level: WARNING
+    handlers: [file]
+    
+  anthropic:
+    level: WARNING
+    handlers: [file]
+    
+  aiohttp:
+    level: WARNING
+    handlers: [file]
+
+# Log handlers configuration
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: colored
+    stream: ext://sys.stdout
+    
+  file:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: detailed
+    filename: logs/async_toolformer.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 5
+    encoding: utf8
+    
+  structured:
+    class: pythonjsonlogger.jsonlogger.JsonFormatter
+    level: INFO
+    formatter: json
+    filename: logs/async_toolformer.jsonl
+    
+  error_file:
+    class: logging.handlers.RotatingFileHandler
+    level: ERROR
+    formatter: detailed
+    filename: logs/errors.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 10
+    encoding: utf8
+
+# Log formatters
+formatters:
+  colored:
+    (): colorlog.ColoredFormatter
+    format: '%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+    log_colors:
+      DEBUG: cyan
+      INFO: green
+      WARNING: yellow
+      ERROR: red
+      CRITICAL: red,bg_white
+      
+  detailed:
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(pathname)s:%(lineno)d - %(funcName)s - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+    
+  json:
+    (): pythonjsonlogger.jsonlogger.JsonFormatter
+    format: '%(asctime)s %(name)s %(levelname)s %(pathname)s %(lineno)d %(funcName)s %(message)s'
+    datefmt: '%Y-%m-%dT%H:%M:%S'
+
+# Root logger configuration
+root:
+  level: INFO
+  handlers: [console, file, error_file]
+
+# Performance and security logging
+filters:
+  # Filter out sensitive information
+  sensitive_filter:
+    (): async_toolformer.logging.SensitiveDataFilter
+    patterns:
+      - 'sk-[a-zA-Z0-9]+'      # OpenAI API keys
+      - 'Bearer [a-zA-Z0-9]+'  # Bearer tokens
+      - 'password=[^&\s]*'     # Passwords in URLs
+      - 'token=[^&\s]*'        # Tokens in URLs
+      
+  # Rate limiting filter to prevent log spam
+  rate_limit_filter:
+    (): async_toolformer.logging.RateLimitFilter
+    rate: 100  # Max 100 similar messages per minute
+    burst: 10  # Allow burst of 10 messages
+
+# Environment-specific overrides
+environments:
+  development:
+    loggers:
+      async_toolformer:
+        level: DEBUG
+    handlers:
+      console:
+        level: DEBUG
+        
+  production:
+    loggers:
+      async_toolformer:
+        level: INFO
+      root:
+        level: WARNING
+    handlers:
+      console:
+        level: WARNING
+      file:
+        level: INFO
+        
+  testing:
+    loggers:
+      async_toolformer:
+        level: DEBUG
+    handlers:
+      console:
+        level: CRITICAL  # Suppress console output during tests
+      file:
+        filename: logs/test_async_toolformer.log
+
+# Structured logging fields for observability
+structured_fields:
+  # Always include these fields
+  required:
+    - timestamp
+    - level
+    - logger
+    - message
+    - module
+    - function
+    - line_number
+    
+  # Include these fields when available
+  optional:
+    - request_id
+    - user_id
+    - tool_name
+    - execution_time
+    - error_type
+    - stack_trace
+    - rate_limit_service
+    - speculation_result
+    - parallel_count
+    
+  # Performance metrics to log
+  metrics:
+    - tool_execution_duration
+    - rate_limit_wait_time
+    - memory_usage
+    - cpu_usage
+    - active_connections
+    
+# Log aggregation and shipping
+shipping:
+  # Fluentd configuration
+  fluentd:
+    enabled: false
+    host: fluentd
+    port: 24224
+    tag: async_toolformer
+    
+  # ELK Stack configuration  
+  elasticsearch:
+    enabled: false
+    hosts: ['elasticsearch:9200']
+    index: async-toolformer-logs
+    
+  # Cloud logging services
+  cloudwatch:
+    enabled: false
+    log_group: /aws/async-toolformer
+    region: us-east-1
+    
+  # Syslog configuration
+  syslog:
+    enabled: false
+    host: syslog-server
+    port: 514
+    facility: 16  # local0

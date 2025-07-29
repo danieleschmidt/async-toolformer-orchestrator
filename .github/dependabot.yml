@@ -1,0 +1,51 @@
+version: 2
+updates:
+  # Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    assignees:
+      - "danieleschmidt"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      dev-dependencies:
+        patterns:
+          - "pytest*"
+          - "ruff*"
+          - "mypy*"
+          - "bandit*"
+          - "pre-commit*"
+          - "coverage*"
+          - "sphinx*"
+      production-dependencies:
+        patterns:
+          - "asyncio*"
+          - "aiohttp*"
+          - "openai*"
+          - "anthropic*"
+          - "pydantic*"
+          - "structlog*"
+          - "tenacity*"
+          - "aiolimiter*"
+    ignore:
+      # Ignore major version updates for stable dependencies
+      - dependency-name: "openai"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "anthropic"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    assignees:
+      - "danieleschmidt"
+    commit-message:
+      prefix: "ci"

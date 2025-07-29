@@ -1,0 +1,26 @@
+# Global code ownership
+* @danieleschmidt
+
+# Core orchestrator components
+/src/async_toolformer/orchestrator.py @danieleschmidt
+/src/async_toolformer/tools.py @danieleschmidt
+/src/async_toolformer/config.py @danieleschmidt
+
+# Security-sensitive files
+/SECURITY.md @danieleschmidt
+/.github/workflows/ @danieleschmidt
+/pyproject.toml @danieleschmidt
+
+# Documentation
+/README.md @danieleschmidt
+/docs/ @danieleschmidt
+*.md @danieleschmidt
+
+# CI/CD and tooling
+/.pre-commit-config.yaml @danieleschmidt
+/Makefile @danieleschmidt
+/.github/ @danieleschmidt
+
+# Testing infrastructure
+/tests/ @danieleschmidt
+/conftest.py @danieleschmidt

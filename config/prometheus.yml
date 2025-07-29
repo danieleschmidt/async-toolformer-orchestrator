@@ -1,0 +1,90 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'async-toolformer'
+    replica: 'prometheus-01'
+
+rule_files:
+  - "rules/*.yml"
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 5s
+    metrics_path: /metrics
+
+  # Async Toolformer Orchestrator
+  - job_name: 'async-toolformer-orchestrator'
+    static_configs:
+      - targets: ['async-toolformer:8000']
+    scrape_interval: 10s
+    metrics_path: /metrics
+    scrape_timeout: 5s
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # System metrics (if node_exporter is available)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+  # Docker container metrics (if cAdvisor is available)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Remote write configuration (for long-term storage)
+# remote_write:
+#   - url: "https://your-remote-storage-endpoint/api/v1/write"
+#     basic_auth:
+#       username: "your-username"
+#       password: "your-password"
+
+# Recording rules for performance optimization
+recording_rules:
+  - name: async_toolformer_recording_rules
+    interval: 30s
+    rules:
+      # Tool execution rate
+      - record: async_toolformer:tool_execution_rate
+        expr: rate(async_orchestrator_tools_total[5m])
+      
+      # Average tool execution duration
+      - record: async_toolformer:avg_tool_duration
+        expr: rate(async_orchestrator_duration_seconds_sum[5m]) / rate(async_orchestrator_duration_seconds_count[5m])
+      
+      # Error rate
+      - record: async_toolformer:error_rate
+        expr: rate(async_orchestrator_tools_total{status="error"}[5m]) / rate(async_orchestrator_tools_total[5m])
+      
+      # Rate limit hit rate
+      - record: async_toolformer:rate_limit_hit_rate
+        expr: rate(async_orchestrator_rate_limit_hits[5m])
+      
+      # Speculation success rate
+      - record: async_toolformer:speculation_success_rate
+        expr: rate(async_orchestrator_speculations{outcome="hit"}[5m]) / rate(async_orchestrator_speculations[5m])
+
+# Global retention policy
+storage:
+  tsdb:
+    retention.time: 30d
+    retention.size: 10GB
