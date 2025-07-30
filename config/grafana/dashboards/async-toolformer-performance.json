@@ -1,0 +1,319 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Async Toolformer - Performance Analysis",
+    "tags": ["async-toolformer", "performance", "analysis"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "10s",
+    "time": {
+      "from": "now-30m",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Tool Execution Latency Distribution",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "increase(async_orchestrator_tool_duration_seconds_bucket[1m])",
+            "legendFormat": "{{le}}",
+            "format": "heatmap"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            }
+          }
+        },
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Parallel Execution Efficiency",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "async_orchestrator_parallel_executions / async_orchestrator_max_parallel * 100",
+            "legendFormat": "Utilization %"
+          },
+          {
+            "expr": "rate(async_orchestrator_tool_executions_total[1m])",
+            "legendFormat": "Execution Rate"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "linear",
+              "barAlignment": 0,
+              "lineWidth": 2,
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "spanNulls": false,
+              "insertNulls": false,
+              "showPoints": "never",
+              "pointSize": 5
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 10}
+      },
+      {
+        "id": 3,
+        "title": "Tool Performance by Type",
+        "type": "bargauge",
+        "targets": [
+          {
+            "expr": "avg(rate(async_orchestrator_tool_duration_seconds_sum[5m])) by (tool_name) / avg(rate(async_orchestrator_tool_duration_seconds_count[5m])) by (tool_name)",
+            "legendFormat": "{{tool_name}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "continuous-GrYlRd"},
+            "unit": "s",
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10}
+      },
+      {
+        "id": 4,
+        "title": "Rate Limiting Impact",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(async_orchestrator_rate_limit_hits_total[1m]) by (service)",
+            "legendFormat": "Rate Limits - {{service}}"
+          },
+          {
+            "expr": "rate(async_orchestrator_tool_executions_total{status=\"timeout\"}[1m])",
+            "legendFormat": "Timeouts"
+          },
+          {
+            "expr": "rate(async_orchestrator_tool_executions_total{status=\"cancelled\"}[1m])",
+            "legendFormat": "Cancellations"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18}
+      },
+      {
+        "id": 5,
+        "title": "Memory and Resource Usage",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "async_orchestrator_memory_usage_bytes{component=\"orchestrator\"} / 1024 / 1024",
+            "legendFormat": "Orchestrator Memory (MB)"
+          },
+          {
+            "expr": "async_orchestrator_memory_usage_bytes{component=\"tools\"} / 1024 / 1024",
+            "legendFormat": "Tools Memory (MB)"
+          },
+          {
+            "expr": "async_orchestrator_queue_size{queue_type=\"active_tasks\"}",
+            "legendFormat": "Active Tasks"
+          },
+          {
+            "expr": "async_orchestrator_queue_size{queue_type=\"speculation\"}",
+            "legendFormat": "Speculation Queue"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 0,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18}
+      },
+      {
+        "id": 6,
+        "title": "Speculation Performance Analysis",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum(rate(async_orchestrator_speculation_outcomes_total[5m])) by (outcome)",
+            "legendFormat": "{{outcome}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            },
+            "mappings": []
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "pieType": "pie",
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          },
+          "legend": {
+            "displayMode": "visible",
+            "placement": "right"
+          }
+        },
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 26}
+      },
+      {
+        "id": 7,
+        "title": "Error Analysis",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(10, sum(rate(async_orchestrator_tool_executions_total{status=\"error\"}[5m])) by (tool_name, error_type))",
+            "legendFormat": "",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            }
+          }
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "tool_name": "Tool",
+                "error_type": "Error Type",
+                "Value": "Rate (req/s)"
+              }
+            }
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 26}
+      },
+      {
+        "id": 8,
+        "title": "Top Tools by Volume",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(15, sum(rate(async_orchestrator_tool_executions_total[5m])) by (tool_name))",
+            "legendFormat": "",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            }
+          }
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "renameByName": {
+                "tool_name": "Tool Name",
+                "Value": "Executions/sec"
+              }
+            }
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 26}
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "gnetId": null,
+    "graphTooltip": 0,
+    "links": [],
+    "refresh": "10s",
+    "schemaVersion": 27,
+    "version": 1
+  }
+}

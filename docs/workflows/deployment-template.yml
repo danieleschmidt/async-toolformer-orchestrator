@@ -1,0 +1,80 @@
+# Production Deployment Workflow Template for Advanced SDLC
+# Place this file at: .github/workflows/deploy.yml
+
+name: Production Deployment
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.build.outputs.image-tag }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build and push Docker image
+      id: build
+      run: |
+        IMAGE_TAG="async-toolformer:${{ github.sha }}"
+        docker build -t $IMAGE_TAG .
+        echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    if: github.event.inputs.environment == 'staging' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+    
+    - name: Deploy with Helm
+      run: |
+        helm upgrade --install async-toolformer k8s/helm/ \
+          --values k8s/helm/values.yaml \
+          --set image.tag=${{ needs.build.outputs.image-tag }} \
+          --namespace async-toolformer \
+          --create-namespace
+
+  deploy-production:
+    needs: [build, deploy-staging]
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.event_name == 'release' || github.event.inputs.environment == 'production'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Blue-Green Deployment
+      run: |
+        # Deploy to green environment
+        helm upgrade --install async-toolformer-green k8s/helm/ \
+          --values k8s/helm/values-production.yaml \
+          --set image.tag=${{ needs.build.outputs.image-tag }} \
+          --set deployment.suffix="-green" \
+          --namespace async-toolformer-prod
+        
+        # Health check and traffic switch
+        ./scripts/blue-green-switch.sh
+
+# Integrates with Helm charts in k8s/helm/ directory
+# Uses observability configuration for health checks

@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "async-toolformer-orchestrator.fullname" . }}
+  labels:
+    {{- include "async-toolformer-orchestrator.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  strategy:
+    {{- toYaml .Values.deployment.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "async-toolformer-orchestrator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        prometheus.io/scrape: {{ .Values.metrics.enabled | quote }}
+        prometheus.io/port: {{ .Values.metrics.port | quote }}
+        prometheus.io/path: {{ .Values.metrics.path | quote }}
+      labels:
+        {{- include "async-toolformer-orchestrator.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "async-toolformer-orchestrator.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+            {{- end }}
+          env:
+            {{- toYaml .Values.env | nindent 12 }}
+            - name: ORCHESTRATOR_MAX_PARALLEL_TOOLS
+              value: {{ .Values.config.orchestrator.maxParallelTools | quote }}
+            - name: ORCHESTRATOR_TOOL_TIMEOUT_MS
+              value: {{ .Values.config.orchestrator.toolTimeoutMs | quote }}
+            - name: ORCHESTRATOR_TOTAL_TIMEOUT_MS
+              value: {{ .Values.config.orchestrator.totalTimeoutMs | quote }}
+            - name: ORCHESTRATOR_RETRY_ATTEMPTS
+              value: {{ .Values.config.orchestrator.retryAttempts | quote }}
+            - name: ORCHESTRATOR_ENABLE_SPECULATION
+              value: {{ .Values.config.orchestrator.enableSpeculation | quote }}
+            - name: RATE_LIMITING_ENABLED
+              value: {{ .Values.config.rateLimiting.enabled | quote }}
+            - name: RATE_LIMITING_GLOBAL_MAX
+              value: {{ .Values.config.rateLimiting.globalMax | quote }}
+            - name: RATE_LIMITING_USE_REDIS
+              value: {{ .Values.config.rateLimiting.useRedis | quote }}
+            - name: OBSERVABILITY_ENABLE_TRACING
+              value: {{ .Values.config.observability.enableTracing | quote }}
+            - name: OBSERVABILITY_ENABLE_METRICS
+              value: {{ .Values.config.observability.enableMetrics | quote }}
+            - name: OBSERVABILITY_TRACING_SAMPLING_RATE
+              value: {{ .Values.config.observability.tracingSamplingRate | quote }}
+            - name: SECURITY_ENABLE_AUTHENTICATION
+              value: {{ .Values.config.security.enableAuthentication | quote }}
+            - name: SECURITY_ENABLE_AUTHORIZATION
+              value: {{ .Values.config.security.enableAuthorization | quote }}
+          {{- if .Values.envFromSecret }}
+          envFrom:
+            {{- toYaml .Values.envFromSecret | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- if .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: /app/data
+            {{- end }}
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "async-toolformer-orchestrator.fullname" . }}-config
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "async-toolformer-orchestrator.fullname" . }}-data
+        {{- end }}
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

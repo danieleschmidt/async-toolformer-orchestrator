@@ -1,0 +1,267 @@
+groups:
+  - name: async-toolformer.rules
+    rules:
+      # High-level service health
+      - alert: AsyncToolformerDown
+        expr: up{job="async-toolformer"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: async-toolformer
+        annotations:
+          summary: "Async Toolformer orchestrator is down"
+          description: "The Async Toolformer orchestrator has been down for more than 1 minute."
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(async_orchestrator_tool_executions_total{status="error"}[5m]) /
+            rate(async_orchestrator_tool_executions_total[5m])
+          ) * 100 > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: async-toolformer
+        annotations:
+          summary: "High error rate in tool executions"
+          description: "Error rate is {{ $value }}% which is above the 5% threshold."
+
+      - alert: CriticalErrorRate
+        expr: |
+          (
+            rate(async_orchestrator_tool_executions_total{status="error"}[5m]) /
+            rate(async_orchestrator_tool_executions_total[5m])
+          ) * 100 > 15
+        for: 1m
+        labels:
+          severity: critical
+          service: async-toolformer
+        annotations:
+          summary: "Critical error rate in tool executions"
+          description: "Error rate is {{ $value }}% which is critically high (>15%)."
+
+      # Performance alerts
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(async_orchestrator_tool_duration_seconds_bucket[5m])
+          ) > 10
+        for: 3m
+        labels:
+          severity: warning
+          service: async-toolformer
+        annotations:
+          summary: "High latency in tool executions"
+          description: "95th percentile latency is {{ $value }}s which is above 10s threshold."
+
+      - alert: VeryHighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(async_orchestrator_tool_duration_seconds_bucket[5m])
+          ) > 30
+        for: 1m
+        labels:
+          severity: critical
+          service: async-toolformer
+        annotations:
+          summary: "Very high latency in tool executions"
+          description: "95th percentile latency is {{ $value }}s which is critically high (>30s)."
+
+      # Resource utilization alerts
+      - alert: HighParallelExecution
+        expr: async_orchestrator_parallel_executions > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: async-toolformer
+        annotations:
+          summary: "High parallel execution count"
+          description: "Current parallel executions: {{ $value }}, which may indicate high load."
+
+      - alert: MaxParallelExecutionReached
+        expr: async_orchestrator_parallel_executions >= 100
+        for: 1m
+        labels:
+          severity: critical
+          service: async-toolformer
+        annotations:
+          summary: "Maximum parallel execution limit reached"
+          description: "Parallel executions at maximum: {{ $value }}. New requests may be queued or rejected."
+
+      - alert: HighMemoryUsage
+        expr: |
+          async_orchestrator_memory_usage_bytes / 1024 / 1024 / 1024 > 4
+        for: 3m
+        labels:
+          severity: warning
+          service: async-toolformer
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}GB which is above 4GB threshold."
+
+      - alert: CriticalMemoryUsage
+        expr: |
+          async_orchestrator_memory_usage_bytes / 1024 / 1024 / 1024 > 8
+        for: 1m
+        labels:
+          severity: critical
+          service: async-toolformer
+        annotations:
+          summary: "Critical memory usage"
+          description: "Memory usage is {{ $value }}GB which is critically high (>8GB)."
+
+      # Rate limiting alerts
+      - alert: HighRateLimitHits
+        expr: |
+          rate(async_orchestrator_rate_limit_hits_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          service: async-toolformer
+        annotations:
+          summary: "High rate limit hits"
+          description: "Rate limit hits: {{ $value }}/sec for service {{ $labels.service }}."
+
+      - alert: CriticalRateLimitHits
+        expr: |
+          rate(async_orchestrator_rate_limit_hits_total[5m]) > 50
+        for: 1m
+        labels:
+          severity: critical
+          service: async-toolformer
+        annotations:
+          summary: "Critical rate limit hits"
+          description: "Very high rate limit hits: {{ $value }}/sec for service {{ $labels.service }}."
+
+      # Speculation performance
+      - alert: LowSpeculationHitRate
+        expr: |
+          (
+            rate(async_orchestrator_speculation_outcomes_total{outcome="hit"}[10m]) /
+            rate(async_orchestrator_speculation_outcomes_total[10m])
+          ) * 100 < 30
+        for: 5m
+        labels:
+          severity: warning
+          service: async-toolformer
+        annotations:
+          summary: "Low speculation hit rate"
+          description: "Speculation hit rate is {{ $value }}% which is below 30% threshold."
+
+      - alert: HighSpeculationTimeout
+        expr: |
+          rate(async_orchestrator_speculation_outcomes_total{outcome="timeout"}[5m]) > 5
+        for: 3m
+        labels:
+          severity: warning
+          service: async-toolformer
+        annotations:
+          summary: "High speculation timeouts"
+          description: "Speculation timeouts: {{ $value }}/sec which may indicate performance issues."
+
+      # Queue management
+      - alert: HighQueueSize
+        expr: |
+          async_orchestrator_queue_size > 1000
+        for: 2m
+        labels:
+          severity: warning
+          service: async-toolformer
+        annotations:
+          summary: "High queue size"
+          description: "Queue {{ $labels.queue_type }} size is {{ $value }} which is above 1000."
+
+      - alert: CriticalQueueSize
+        expr: |
+          async_orchestrator_queue_size > 5000
+        for: 30s
+        labels:
+          severity: critical
+          service: async-toolformer
+        annotations:
+          summary: "Critical queue size"
+          description: "Queue {{ $labels.queue_type }} size is {{ $value }} which is critically high (>5000)."
+
+      # Tool-specific alerts
+      - alert: ToolConsistentFailures
+        expr: |
+          (
+            rate(async_orchestrator_tool_executions_total{status="error"}[10m]) /
+            rate(async_orchestrator_tool_executions_total[10m])
+          ) > 0.8
+        for: 3m
+        labels:
+          severity: critical
+          service: async-toolformer
+        annotations:
+          summary: "Tool consistently failing"
+          description: "Tool {{ $labels.tool_name }} has >80% error rate over 10 minutes."
+
+      - alert: ToolTimeout
+        expr: |
+          rate(async_orchestrator_tool_executions_total{status="timeout"}[5m]) > 1
+        for: 2m
+        labels:
+          severity: warning
+          service: async-toolformer
+        annotations:
+          summary: "Tool timeouts detected"
+          description: "Tool {{ $labels.tool_name }} is timing out {{ $value }}/sec."
+
+      # Infrastructure alerts
+      - alert: RedisConnectionFailure
+        expr: |
+          up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: async-toolformer
+          component: redis
+        annotations:
+          summary: "Redis connection failure"
+          description: "Redis is down, which will affect rate limiting and caching."
+
+      - alert: HighRedisMemoryUsage
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: async-toolformer
+          component: redis
+        annotations:
+          summary: "High Redis memory usage"
+          description: "Redis memory usage is {{ $value }}% which is above 80%."
+
+  - name: async-toolformer-predictions
+    rules:
+      # Predictive alerts based on trends
+      - alert: PredictedHighLoad
+        expr: |
+          predict_linear(
+            rate(async_orchestrator_tool_executions_total[10m])[20m:], 
+            3600
+          ) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: async-toolformer
+          type: predictive
+        annotations:
+          summary: "Predicted high load in next hour"
+          description: "Based on current trends, expecting {{ $value }} requests/sec in 1 hour."
+
+      - alert: PredictedMemoryExhaustion
+        expr: |
+          predict_linear(
+            async_orchestrator_memory_usage_bytes[30m], 
+            7200
+          ) / 1024 / 1024 / 1024 > 16
+        for: 10m
+        labels:
+          severity: warning
+          service: async-toolformer
+          type: predictive
+        annotations:
+          summary: "Predicted memory exhaustion"
+          description: "Based on current trends, expecting {{ $value }}GB memory usage in 2 hours."
