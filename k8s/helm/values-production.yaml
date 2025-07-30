@@ -1,0 +1,192 @@
+# Production values for async-toolformer-orchestrator
+# Override values for production deployment
+
+replicaCount: 5
+
+image:
+  repository: ghcr.io/yourusername/async-toolformer-orchestrator
+  pullPolicy: IfNotPresent
+  tag: "stable"
+
+resources:
+  limits:
+    cpu: 4000m
+    memory: 8Gi
+  requests:
+    cpu: 2000m
+    memory: 4Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 50
+  targetCPUUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Percent
+        value: 200
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+      - type: Percent
+        value: 25
+        periodSeconds: 60
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 3
+
+config:
+  orchestrator:
+    maxParallelTools: 50
+    toolTimeoutMs: 15000
+    totalTimeoutMs: 90000
+    retryAttempts: 5
+    enableSpeculation: true
+    enableResultStreaming: true
+  
+  rateLimiting:
+    enabled: true
+    globalMax: 5000
+    useRedis: true
+    backpressureStrategy: "adaptive"
+  
+  observability:
+    enableTracing: true
+    enableMetrics: true
+    tracingSamplingRate: 0.05  # Lower sampling in production
+    metricsPort: 9090
+  
+  security:
+    enableAuthentication: true
+    enableAuthorization: true
+    encryptionAtRest: true
+    encryptionInTransit: true
+
+env:
+  - name: ENVIRONMENT
+    value: "production"
+  - name: LOG_LEVEL
+    value: "INFO"
+  - name: REDIS_URL
+    value: "redis://redis:6379"
+  - name: PROMETHEUS_ENDPOINT
+    value: "http://prometheus:9090"
+  - name: JAEGER_ENDPOINT
+    value: "http://jaeger:14268/api/traces"
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 60
+
+persistence:
+  enabled: true
+  storageClass: "fast-ssd"
+  accessMode: ReadWriteOnce
+  size: 50Gi
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+    scrapeTimeout: 5s
+
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+                - async-toolformer-orchestrator
+        topologyKey: kubernetes.io/hostname
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: node-type
+              operator: In
+              values:
+                - compute-optimized
+
+tolerations:
+  - key: "high-performance"
+    operator: "Equal"  
+    value: "true"
+    effect: "NoSchedule"
+
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: "prod-redis-password-change-me"
+  master:
+    persistence:
+      enabled: true
+      size: 32Gi
+      storageClass: "fast-ssd"
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+  replica:
+    replicaCount: 3
+    persistence:
+      enabled: true
+      size: 32Gi
+      storageClass: "fast-ssd"
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+
+backup:
+  enabled: true
+  schedule: "0 2 * * *"
+  retention: "90d"
+  s3:
+    bucket: "async-toolformer-prod-backups"
+    region: "us-east-1"
+
+deployment:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 2
+      maxSurge: 3

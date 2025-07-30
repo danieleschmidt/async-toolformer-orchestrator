@@ -1,0 +1,35 @@
+apiVersion: v2
+name: async-toolformer-orchestrator
+description: A Helm chart for Async Toolformer Orchestrator - Parallel tool execution for LLMs
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/yourusername/async-toolformer-orchestrator
+maintainers:
+  - name: Daniel Schmidt
+    email: async-tools@yourdomain.com
+sources:
+  - https://github.com/yourusername/async-toolformer-orchestrator
+keywords:
+  - async
+  - llm
+  - orchestrator
+  - tools
+  - parallel
+  - ai
+dependencies:
+  - name: redis
+    version: "17.11.3"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+  - name: prometheus
+    version: "23.1.0"
+    repository: "https://prometheus-community.github.io/helm-charts"
+    condition: prometheus.enabled
+  - name: grafana
+    version: "6.57.4"
+    repository: "https://grafana.github.io/helm-charts"
+    condition: grafana.enabled
+annotations:
+  category: AI/ML
+  licenses: MIT
