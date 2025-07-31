@@ -1,0 +1,169 @@
+{
+  // Python configuration
+  "python.defaultInterpreterPath": "./venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.analysis.typeCheckingMode": "strict",
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.completeFunctionParens": true,
+  
+  // Linting and formatting
+  "python.linting.enabled": false,  // Using ruff instead
+  "python.formatting.provider": "none",  // Using ruff instead
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": true,
+      "source.fixAll": true
+    },
+    "editor.formatOnSave": true,
+    "editor.rulers": [88]
+  },
+  
+  // Ruff configuration
+  "ruff.enable": true,
+  "ruff.organizeImports": true,
+  "ruff.fixAll": true,
+  
+  // MyPy configuration
+  "mypy.enabled": true,
+  "mypy.runUsingActiveInterpreter": true,
+  
+  // Testing configuration
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": [
+    "--verbose",
+    "--tb=short",
+    "tests/"
+  ],
+  
+  // File associations
+  "files.associations": {
+    "*.yml": "yaml",
+    "*.yaml": "yaml",
+    "Dockerfile*": "dockerfile",
+    "*.toml": "toml"
+  },
+  
+  // Editor settings
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "editor.rulers": [88, 120],
+  "editor.wordWrap": "wordWrapColumn",
+  "editor.wordWrapColumn": 88,
+  
+  // File exclusions
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true,
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/*.egg-info": true
+  },
+  
+  // Search exclusions
+  "search.exclude": {
+    "**/venv": true,
+    "**/.venv": true,
+    "**/htmlcov": true,
+    "**/.coverage": true,
+    "**/profile.stats": true
+  },
+  
+  // Git configuration
+  "git.ignoreLimitWarning": true,
+  "git.autofetch": true,
+  "git.enableCommitSigning": true,
+  
+  // Docker configuration
+  "docker.showStartPage": false,
+  "docker.dockerPath": "docker",
+  
+  // Kubernetes
+  "vs-kubernetes": {
+    "vs-kubernetes.crd-code-completion": "enabled",
+    "vs-kubernetes.helm-path": "/usr/local/bin/helm"
+  },
+  
+  // Terminal configuration
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.cwd": "${workspaceFolder}",
+  
+  // IntelliSense
+  "python.analysis.include": [
+    "src/",
+    "tests/"
+  ],
+  "python.analysis.exclude": [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/node_modules",
+    "**/dist",
+    "**/build"
+  ],
+  
+  // Debugging
+  "python.debugging.console": "integratedTerminal",
+  
+  // JSON/YAML
+  "yaml.schemas": {
+    "https://json.schemastore.org/github-workflow.json": ".github/workflows/*.yml",
+    "https://json.schemastore.org/github-action.json": ".github/actions/*/action.yml",
+    "https://json.schemastore.org/dependabot-2.0.json": ".github/dependabot.yml",
+    "https://json.schemastore.org/prometheus.json": "**/prometheus.yml"
+  },
+  
+  // Markdown
+  "markdown.preview.fontSize": 14,
+  "markdown.preview.lineHeight": 1.6,
+  "[markdown]": {
+    "editor.wordWrap": "wordWrapColumn",
+    "editor.wordWrapColumn": 100,
+    "editor.quickSuggestions": {
+      "comments": "off",
+      "strings": "off",
+      "other": "off"
+    }
+  },
+  
+  // Spell checking
+  "cSpell.words": [
+    "asyncio",
+    "aiohttp",
+    "toolformer",
+    "orchestrator",
+    "kubernetes",
+    "prometheus",
+    "grafana",
+    "jaeger",
+    "openai",
+    "anthropic",
+    "pydantic",
+    "structlog",
+    "tenacity",
+    "aiolimiter",
+    "uvloop",
+    "pytest",
+    "bandit",
+    "mypy",
+    "ruff"
+  ],
+  
+  // Security
+  "security.workspace.trust.untrustedFiles": "prompt",
+  
+  // Performance
+  "python.analysis.memory.keepLibraryAst": true,
+  "extensions.experimental.affinity": {
+    "ms-python.python": 1,
+    "ms-python.vscode-pylance": 1,
+    "charliermarsh.ruff": 1
+  }
+}

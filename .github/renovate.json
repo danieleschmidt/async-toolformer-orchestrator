@@ -1,0 +1,76 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base",
+    "security:openssf-scorecard"
+  ],
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "timezone": "UTC",
+  "assignees": ["danieleschmidt"],
+  "reviewers": ["danieleschmidt"],
+  "labels": ["dependencies", "automated"],
+  "rangeStrategy": "bump",
+  "commitMessagePrefix": "deps:",
+  "commitMessageAction": "update",
+  "commitMessageTopic": "{{depName}}",
+  "branchPrefix": "renovate/",
+  "rebaseWhen": "behind-base-branch",
+  "updateNotScheduled": false,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 6am on sunday"
+    ]
+  },
+  "packageRules": [
+    {
+      "matchPackagePatterns": ["^pytest", "^ruff", "^mypy", "^bandit", "^pre-commit", "^coverage", "^sphinx"],
+      "groupName": "dev dependencies",
+      "schedule": ["before 6am on monday"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "matchPackagePatterns": ["^openai", "^anthropic", "^aiohttp", "^pydantic", "^structlog"],
+      "groupName": "production dependencies",
+      "schedule": ["before 6am on monday"],
+      "reviewersFromCodeOwners": true,
+      "addLabels": ["needs-review"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "schedule": ["before 6am on sunday"],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboard": true,
+      "addLabels": ["major-update"],
+      "schedule": ["before 6am on sunday"]
+    },
+    {
+      "matchPackagePatterns": ["^redis", "^prometheus"],
+      "groupName": "infrastructure dependencies",
+      "schedule": ["before 6am on sunday"]
+    }
+  ],
+  "vulnerability": {
+    "enabled": true,
+    "schedule": ["at any time"],
+    "labels": ["security", "vulnerability"],
+    "assignees": ["danieleschmidt"],
+    "reviewers": ["security-team"]
+  },
+  "osvVulnerabilityAlerts": true,
+  "stabilityDays": 3,
+  "prConcurrentLimit": 5,
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "🤖 Dependency Updates Dashboard",
+  "gitAuthor": "Renovate Bot <bot@renovateapp.com>",
+  "platformCommit": true
+}

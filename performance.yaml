@@ -1,0 +1,183 @@
+# Performance Configuration for Async Toolformer Orchestrator
+# This file defines performance benchmarks, optimization settings, and monitoring configurations
+
+metadata:
+  name: "async-toolformer-performance"
+  version: "1.0.0"
+  description: "Performance optimization configuration"
+
+# Performance benchmarks and thresholds
+benchmarks:
+  # Core orchestrator performance
+  orchestrator:
+    max_parallel_tools: 50
+    tool_timeout_ms: 10000
+    llm_timeout_ms: 30000
+    total_timeout_ms: 60000
+    
+    # Memory thresholds
+    max_memory_mb: 512
+    gc_threshold_mb: 256
+    
+    # Throughput targets
+    min_tools_per_second: 100
+    max_queue_depth: 1000
+
+  # Rate limiting performance
+  rate_limiting:
+    global_max_rps: 1000
+    burst_capacity: 5000
+    refill_rate: 100
+    window_size_seconds: 60
+    
+    # Service-specific limits
+    openai_rps: 500
+    anthropic_rps: 200
+    database_rps: 2000
+
+  # Network and I/O performance
+  network:
+    connection_pool_size: 100
+    keep_alive_timeout: 30
+    request_timeout: 30
+    max_retries: 3
+    backoff_factor: 2
+
+# Resource optimization settings
+optimization:
+  # Event loop configuration
+  event_loop:
+    use_uvloop: true
+    max_tasks: 10000
+    executor_workers: 50
+    use_process_pool: false
+    
+  # Memory management
+  memory:
+    enable_gc_optimization: true
+    gc_threshold_0: 1000
+    gc_threshold_1: 15
+    gc_threshold_2: 15
+    compress_results: true
+    swap_to_disk: false
+    max_result_size_mb: 100
+
+  # Async optimization
+  async:
+    enable_speculation: true
+    speculation_confidence: 0.8
+    max_speculative_tasks: 10
+    cancellation_grace_period_ms: 1000
+
+# Monitoring and observability
+monitoring:
+  # Metrics collection
+  metrics:
+    enabled: true
+    prometheus_port: 9090
+    export_interval_seconds: 10
+    
+    # Custom metrics
+    track_tool_duration: true
+    track_memory_usage: true
+    track_queue_depth: true
+    track_error_rates: true
+    
+  # Health checks
+  health:
+    enabled: true
+    port: 8080
+    path: "/health"
+    interval_seconds: 30
+    
+    # Health check thresholds
+    max_response_time_ms: 1000
+    max_error_rate_percent: 5
+    max_memory_usage_percent: 80
+
+  # Tracing
+  tracing:
+    enabled: true
+    jaeger_endpoint: "http://jaeger:14268/api/traces"
+    sampling_rate: 0.1
+    service_name: "async-toolformer"
+
+# Performance testing configuration
+testing:
+  # Load testing parameters
+  load_test:
+    concurrent_users: 100
+    ramp_up_time_seconds: 30
+    test_duration_seconds: 300
+    target_rps: 500
+    
+  # Stress testing
+  stress_test:
+    max_concurrent_users: 1000
+    duration_seconds: 600
+    failure_threshold_percent: 5
+    
+  # Benchmark scenarios
+  scenarios:
+    - name: "parallel_tool_execution"
+      description: "Test parallel execution of multiple tools"
+      tools_count: 20
+      concurrent_requests: 10
+      
+    - name: "rate_limit_handling"
+      description: "Test behavior under rate limiting"
+      request_rate: 2000
+      expected_success_rate: 0.95
+      
+    - name: "memory_pressure"
+      description: "Test under high memory usage"
+      large_result_size_mb: 50
+      concurrent_large_requests: 5
+
+# Performance alerts
+alerts:
+  # Response time alerts
+  - name: "high_response_time"
+    condition: "avg_response_time > 5000"
+    severity: "warning"
+    
+  - name: "very_high_response_time"
+    condition: "avg_response_time > 10000"
+    severity: "critical"
+    
+  # Throughput alerts
+  - name: "low_throughput"
+    condition: "requests_per_second < 50"
+    severity: "warning"
+    
+  # Error rate alerts
+  - name: "high_error_rate"
+    condition: "error_rate > 0.05"
+    severity: "critical"
+    
+  # Resource alerts
+  - name: "high_memory_usage"
+    condition: "memory_usage_percent > 80"
+    severity: "warning"
+    
+  - name: "queue_depth_high"
+    condition: "queue_depth > 500"
+    severity: "warning"
+
+# Environment-specific overrides
+environments:
+  development:
+    max_parallel_tools: 10
+    enable_debug_metrics: true
+    tracing_sampling_rate: 1.0
+    
+  staging:
+    max_parallel_tools: 30
+    enable_debug_metrics: false
+    tracing_sampling_rate: 0.5
+    
+  production:
+    max_parallel_tools: 50
+    enable_debug_metrics: false
+    tracing_sampling_rate: 0.1
+    optimize_for_latency: true
