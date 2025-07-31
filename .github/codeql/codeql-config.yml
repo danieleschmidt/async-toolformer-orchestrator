@@ -1,0 +1,52 @@
+name: "Async Toolformer CodeQL Configuration"
+
+# Advanced CodeQL configuration for security analysis
+queries:
+  - uses: security-and-quality
+  - uses: security-extended
+  - name: python-queries
+    uses: ./codeql-queries/python/
+
+# Paths to analyze
+paths:
+  - src/
+  - scripts/
+
+# Paths to ignore during analysis
+paths-ignore:
+  - tests/
+  - docs/
+  - benchmarks/
+  - examples/
+  - "**/*.md"
+  - "**/*.yml"
+  - "**/*.yaml"
+
+# Disable specific queries if needed
+disable-default-queries: false
+
+# Additional configuration for Python
+python:
+  # Include dependency analysis
+  dependency-analysis: true
+  
+  # Enable dataflow analysis
+  dataflow-analysis: true
+  
+  # Custom query packs
+  query-pack-filters:
+    - include:
+        tags:
+          - security
+          - performance
+          - maintainability
+    - exclude:
+        tags:
+          - experimental
+
+# Performance tuning
+threads: 0  # Use all available cores
+ram: 6144   # 6GB RAM limit
+
+# External data sources
+external-repository-token-stdin: false

@@ -1,0 +1,138 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Orchestrator",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/async_toolformer/orchestrator.py",
+      "args": [],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "OPENAI_API_KEY": "${env:OPENAI_API_KEY}",
+        "ANTHROPIC_API_KEY": "${env:ANTHROPIC_API_KEY}"
+      },
+      "python": "${workspaceFolder}/venv/bin/python",
+      "purpose": ["debug-test"],
+      "justMyCode": false,
+      "redirectOutput": true
+    },
+    {
+      "name": "Debug Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "python": "${workspaceFolder}/venv/bin/python",
+      "purpose": ["debug-test"],
+      "justMyCode": true
+    },
+    {
+      "name": "Debug Tests",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "${workspaceFolder}/tests/",
+        "-v",
+        "--tb=short"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "python": "${workspaceFolder}/venv/bin/python",
+      "purpose": ["debug-test"],
+      "justMyCode": false
+    },
+    {
+      "name": "Debug Specific Test Function",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "${workspaceFolder}/tests/",
+        "-v",
+        "-k",
+        "${input:testFunction}"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "python": "${workspaceFolder}/venv/bin/python",
+      "purpose": ["debug-test"],
+      "justMyCode": false
+    },
+    {
+      "name": "Debug Integration Tests",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "${workspaceFolder}/tests/integration/",
+        "-v",
+        "--tb=short"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "REDIS_URL": "redis://localhost:6379",
+        "OPENAI_API_KEY": "${env:OPENAI_API_KEY}"
+      },
+      "python": "${workspaceFolder}/venv/bin/python",
+      "purpose": ["debug-test"],
+      "justMyCode": false
+    },
+    {
+      "name": "Profile Orchestrator",
+      "type": "python",
+      "request": "launch",
+      "module": "cProfile",
+      "args": [
+        "-o", "profile.stats",
+        "${workspaceFolder}/scripts/performance/benchmark-runner.py"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "python": "${workspaceFolder}/venv/bin/python",
+      "purpose": ["debug-test"]
+    },
+    {
+      "name": "Debug Docker Container",
+      "type": "python",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "/app"
+        }
+      ],
+      "justMyCode": false
+    }
+  ],
+  "inputs": [
+    {
+      "id": "testFunction",
+      "description": "Test function name pattern",
+      "default": "test_orchestrator",
+      "type": "promptString"
+    }
+  ]
+}
