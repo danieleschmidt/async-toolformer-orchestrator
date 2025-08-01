@@ -1,0 +1,66 @@
+scoring:
+  weights:
+    advanced:
+      wsjf: 0.5        # Weighted Shortest Job First
+      ice: 0.1         # Impact, Confidence, Ease
+      technicalDebt: 0.3  # Technical debt prioritization
+      security: 0.1    # Security vulnerability boost
+  
+  thresholds:
+    minScore: 15          # Minimum composite score to execute
+    maxRisk: 0.7         # Maximum risk tolerance
+    securityBoost: 2.0   # Security vulnerability multiplier
+    complianceBoost: 1.8 # Compliance issue multiplier
+
+discovery:
+  sources:
+    - gitHistory        # Parse commits for TODO/FIXME/HACK
+    - staticAnalysis    # Code quality and complexity
+    - issueTrackers     # GitHub issues integration
+    - vulnerabilityDatabases  # Security scanning
+    - performanceMonitoring   # Bottleneck detection
+    - technicalDebt     # Code debt analysis
+  
+  tools:
+    staticAnalysis:
+      - ruff           # Python linting (already configured)
+      - mypy           # Type checking (already configured)
+      - bandit         # Security scanning (already configured)
+      - radon          # Complexity analysis
+      - vulture        # Dead code detection
+    security:
+      - safety         # Dependency vulnerability scanning
+      - semgrep        # Static analysis security tool
+      - trivy          # Container vulnerability scanning
+    performance:
+      - py-spy         # Python profiling
+      - memory-profiler # Memory usage analysis
+
+execution:
+  maxConcurrentTasks: 1
+  testRequirements:
+    minCoverage: 85      # Matches pyproject.toml requirement
+    performanceRegression: 5  # Max 5% performance degradation
+    securityChecks: true
+  rollbackTriggers:
+    - testFailure
+    - buildFailure
+    - securityViolation
+    - coverageDrops
+
+repository:
+  maturityLevel: "advanced"
+  primaryLanguage: "python"
+  frameworks: ["asyncio", "aiohttp", "pydantic"]
+  hasCI: false  # Missing workflows - high priority
+  hasContainers: true
+  hasMonitoring: true
+  hasDocumentation: true
+  hasCompliance: true
+
+automation:
+  scheduledRuns:
+    security: "0 */2 * * *"     # Every 2 hours
+    techDebt: "0 2 * * *"       # Daily at 2 AM
+    dependencies: "0 3 * * 1"   # Weekly Monday 3 AM
+    performance: "0 4 * * 0"    # Weekly Sunday 4 AM
