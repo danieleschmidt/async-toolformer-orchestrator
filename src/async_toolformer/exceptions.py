@@ -79,8 +79,36 @@ class SpeculationError(OrchestratorError):
     def __init__(
         self,
         message: str,
-        speculation_id: str,
+        speculation_id: Optional[str] = None,
         details: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__(message, details)
         self.speculation_id = speculation_id
+
+
+class BranchCancellationError(OrchestratorError):
+    """Exception raised during branch cancellation."""
+
+    def __init__(
+        self,
+        message: str,
+        branch_id: Optional[str] = None,
+        details: Optional[dict[str, Any]] = None,
+    ) -> None:
+        super().__init__(message, details)
+        self.branch_id = branch_id
+
+
+class ToolChainError(OrchestratorError):
+    """Exception raised during tool chain execution."""
+
+    def __init__(
+        self,
+        chain_name: str,
+        message: str,
+        original_error: Optional[Exception] = None,
+        details: Optional[dict[str, Any]] = None,
+    ) -> None:
+        super().__init__(f"Chain '{chain_name}': {message}", details)
+        self.chain_name = chain_name
+        self.original_error = original_error
