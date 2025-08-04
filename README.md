@@ -454,9 +454,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ```bibtex
 @software{async_toolformer_orchestrator,
   title={Async Toolformer Orchestrator: Parallel Tool Execution for LLMs},
-  author={Your Name},
+  author={Daniel Schmidt},
   year={2025},
-  url={https://github.com/yourusername/async-toolformer-orchestrator}
+  url={https://github.com/danieleschmidt/async-toolformer-orchestrator}
 }
 ```
 
