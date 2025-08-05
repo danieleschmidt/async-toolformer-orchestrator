@@ -5,7 +5,7 @@ import functools
 import inspect
 from typing import Any, Awaitable, Callable, Dict, List, Optional, TypeVar, Union
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .exceptions import ToolExecutionError
 
@@ -39,7 +39,7 @@ class ToolResult:
             data=data,
             execution_time_ms=execution_time_ms,
             metadata=metadata or {},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     
     @classmethod
@@ -57,7 +57,7 @@ class ToolResult:
             data=str(error),
             execution_time_ms=execution_time_ms,
             metadata=metadata or {},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
 
