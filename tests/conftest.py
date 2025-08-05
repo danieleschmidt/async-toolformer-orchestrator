@@ -398,5 +398,4 @@ pytest_plugins = [
     "pytest_asyncio",
     "pytest_mock",
     "pytest_cov",
-    "pytest_benchmark"  # If benchmark tests are enabled
 ]

@@ -7,11 +7,16 @@ import logging
 
 from .config import OrchestratorConfig
 from .tools import ToolFunction, ToolMetadata, ToolRegistry, ToolResult
+from .llm_integration import LLMIntegration, create_llm_integration
+from .simple_rate_limiter import SimpleRateLimiter
+from .caching import ToolResultCache, create_memory_cache
+from .connection_pool import ConnectionPoolManager, PoolConfig
 from .exceptions import (
     OrchestratorError,
     ToolExecutionError,
     TimeoutError,
     ConfigurationError,
+    RateLimitError,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,18 +35,19 @@ class AsyncOrchestrator:
         llm_client: Optional[Any] = None,
         tools: Optional[List[ToolFunction]] = None,
         config: Optional[OrchestratorConfig] = None,
+        llm_integration: Optional[LLMIntegration] = None,
         **kwargs,
     ) -> None:
         """
         Initialize the AsyncOrchestrator.
         
         Args:
-            llm_client: LLM client (OpenAI, Anthropic, etc.)
+            llm_client: LLM client (OpenAI, Anthropic, etc.) - for backward compatibility
             tools: List of tool functions to register
             config: Configuration object
+            llm_integration: Pre-configured LLM integration instance
             **kwargs: Additional configuration parameters
         """
-        self.llm_client = llm_client
         self.config = config or OrchestratorConfig()
         self.registry = ToolRegistry()
         
@@ -55,6 +61,36 @@ class AsyncOrchestrator:
             self.config.validate()
         except ValueError as e:
             raise ConfigurationError("config", str(e))
+        
+        # Set up LLM integration
+        if llm_integration:
+            self.llm_integration = llm_integration
+        elif llm_client:
+            # Auto-detect client type and create integration
+            self.llm_integration = self._create_llm_integration_from_client(llm_client)
+        else:
+            # Create mock integration for testing
+            self.llm_integration = create_llm_integration(use_mock=True)
+        
+        # Set up rate limiter
+        self.rate_limiter = SimpleRateLimiter(self.config.rate_limit_config)
+        
+        # Set up caching
+        cache_enabled = self.config.memory_config.compress_results
+        cache_size = int(self.config.memory_config.max_memory_gb * 100)  # Rough approximation
+        self.cache = create_memory_cache(
+            max_size=cache_size,
+            default_ttl=3600,  # 1 hour default
+            enable_compression=cache_enabled
+        )
+        
+        # Set up connection pooling
+        pool_config = PoolConfig(
+            max_connections=self.config.max_parallel_tools * 2,
+            max_connections_per_host=self.config.max_parallel_per_type,
+            timeout_seconds=self.config.tool_timeout_ms / 1000.0
+        )
+        self.connection_pool = ConnectionPoolManager(pool_config)
         
         # Register provided tools
         if tools:
@@ -80,6 +116,18 @@ class AsyncOrchestrator:
         self.registry.register_chain(chain)
         logger.debug(f"Registered tool chain: {chain.__name__}")
     
+    def _create_llm_integration_from_client(self, client: Any) -> LLMIntegration:
+        """Create LLM integration from a client instance."""
+        client_type = client.__class__.__name__
+        
+        if "OpenAI" in client_type or "AsyncOpenAI" in client_type:
+            return create_llm_integration(openai_client=client, default_provider="openai")
+        elif "Anthropic" in client_type or "AsyncAnthropic" in client_type:
+            return create_llm_integration(anthropic_client=client, default_provider="anthropic")
+        else:
+            logger.warning(f"Unknown client type: {client_type}, using mock provider")
+            return create_llm_integration(use_mock=True)
+    
     async def execute(
         self,
         prompt: str,
@@ -103,16 +151,21 @@ class AsyncOrchestrator:
         execution_id = f"exec_{int(start_time * 1000)}"
         
         try:
+            logger.info(f"Starting execution {execution_id}")
+            
             # Get LLM decision on which tools to call
             tool_calls = await self._get_llm_tool_calls(prompt, tools)
             
             if not tool_calls:
+                logger.info(f"No tools called for execution {execution_id}")
                 return {
                     "execution_id": execution_id,
                     "results": [],
                     "total_time_ms": (time.time() - start_time) * 1000,
                     "status": "no_tools_called",
                 }
+            
+            logger.info(f"Executing {len(tool_calls)} tools for {execution_id}")
             
             # Execute tools in parallel
             results = await self._execute_tools_parallel(
@@ -185,17 +238,98 @@ class AsyncOrchestrator:
         self, prompt: str, tools: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         """Get tool calls from LLM based on prompt."""
-        if not self.llm_client:
-            # For demo purposes, simulate LLM decision
-            available_tools = tools or list(self.registry._tools.keys())
-            return [
-                {"name": tool_name, "args": {}}
-                for tool_name in available_tools[:3]  # Simulate calling first 3 tools
-            ]
+        # Prepare tools for LLM
+        available_tools = tools or list(self.registry._tools.keys())
+        tool_definitions = []
         
-        # TODO: Implement actual LLM integration
-        # This would use the LLM client to get tool decisions
-        return []
+        for tool_name in available_tools:
+            tool_metadata = self.registry.get_tool(tool_name)
+            if tool_metadata:
+                # Create tool definition for LLM
+                tool_def = {
+                    "name": tool_name,
+                    "description": tool_metadata.description,
+                    "parameters": self._get_tool_parameters(tool_metadata.function)
+                }
+                tool_definitions.append(tool_def)
+        
+        if not tool_definitions:
+            logger.warning("No tools available for LLM")
+            return []
+        
+        # Get tool calls from LLM
+        try:
+            tool_calls = await self.llm_integration.get_tool_calls(
+                prompt=prompt,
+                tools=tool_definitions
+            )
+            
+            # Convert to dict format
+            result = []
+            for tc in tool_calls:
+                result.append({
+                    "name": tc.name,
+                    "args": tc.arguments,
+                    "id": tc.id,
+                    "metadata": tc.metadata
+                })
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to get LLM tool calls: {e}")
+            return []
+    
+    def _get_tool_parameters(self, func: ToolFunction) -> Dict[str, Any]:
+        """Extract parameter schema from a tool function."""
+        import inspect
+        
+        try:
+            sig = inspect.signature(func)
+            parameters = {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+            
+            for param_name, param in sig.parameters.items():
+                param_info = {"type": "string"}  # Default type
+                
+                # Try to infer type from annotation
+                if param.annotation != inspect.Parameter.empty:
+                    annotation = param.annotation
+                    if annotation == int:
+                        param_info["type"] = "integer"
+                    elif annotation == float:
+                        param_info["type"] = "number"
+                    elif annotation == bool:
+                        param_info["type"] = "boolean"
+                    elif annotation == list:
+                        param_info["type"] = "array"
+                    elif annotation == dict:
+                        param_info["type"] = "object"
+                
+                # Add description if available
+                if hasattr(func, '__doc__') and func.__doc__:
+                    # Try to extract parameter description from docstring
+                    # This is a simple implementation - could be enhanced
+                    param_info["description"] = f"Parameter {param_name}"
+                
+                parameters["properties"][param_name] = param_info
+                
+                # Mark as required if no default value
+                if param.default == inspect.Parameter.empty:
+                    parameters["required"].append(param_name)
+            
+            return parameters
+            
+        except Exception as e:
+            logger.warning(f"Could not extract parameters for function {func.__name__}: {e}")
+            return {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
     
     async def _execute_tools_parallel(
         self,
@@ -266,22 +400,74 @@ class AsyncOrchestrator:
                 message=f"Tool '{tool_name}' not found in registry",
             )
         
+        # Check cache first
+        cached_result = await self.cache.get_cached_result(tool_name, args)
+        if cached_result is not None:
+            execution_time_ms = (time.time() - start_time) * 1000
+            logger.debug(f"Cache hit for tool {tool_name}")
+            return ToolResult.success_result(
+                tool_name=tool_name,
+                data=cached_result,
+                execution_time_ms=execution_time_ms,
+                metadata={"cached": True, "args": args}
+            )
+
+        # Check rate limits
+        try:
+            rate_limit_group = tool_metadata.rate_limit_group or tool_name
+            await self.rate_limiter.check_limit(rate_limit_group)
+        except RateLimitError as e:
+            execution_time_ms = (time.time() - start_time) * 1000
+            return ToolResult.error_result(
+                tool_name=tool_name,
+                error=e,
+                execution_time_ms=execution_time_ms,
+            )
+        
         try:
             # Apply tool-specific timeout if configured
             timeout_seconds = None
             if tool_metadata.timeout_ms:
                 timeout_seconds = tool_metadata.timeout_ms / 1000.0
             
-            # Execute the tool
-            if timeout_seconds:
-                result = await asyncio.wait_for(
-                    tool_metadata.function(**args),
-                    timeout=timeout_seconds,
-                )
-            else:
-                result = await tool_metadata.function(**args)
+            # Execute the tool with retry logic
+            retry_attempts = tool_metadata.retry_attempts or 1
+            last_exception = None
+            
+            for attempt in range(retry_attempts):
+                try:
+                    if timeout_seconds:
+                        result = await asyncio.wait_for(
+                            tool_metadata.function(**args),
+                            timeout=timeout_seconds,
+                        )
+                    else:
+                        result = await tool_metadata.function(**args)
+                    
+                    # Success - break out of retry loop
+                    break
+                    
+                except asyncio.TimeoutError:
+                    # Don't retry timeout errors
+                    raise
+                    
+                except Exception as e:
+                    last_exception = e
+                    if attempt < retry_attempts - 1:
+                        logger.debug(f"Tool {tool_name} attempt {attempt + 1} failed: {e}, retrying...")
+                        await asyncio.sleep(0.1 * (attempt + 1))  # Exponential backoff
+                    else:
+                        raise
             
             execution_time_ms = (time.time() - start_time) * 1000
+            
+            # Cache successful result
+            try:
+                cache_ttl = 3600  # 1 hour default
+                if tool_metadata.tags and 'no-cache' not in tool_metadata.tags:
+                    await self.cache.cache_result(tool_name, args, result, cache_ttl)
+            except Exception as e:
+                logger.warning(f"Failed to cache result for {tool_name}: {e}")
             
             return ToolResult.success_result(
                 tool_name=tool_name,
@@ -291,6 +477,7 @@ class AsyncOrchestrator:
                     "args": args,
                     "priority": tool_metadata.priority,
                     "tags": tool_metadata.tags,
+                    "cached": False,
                 },
             )
             
@@ -319,14 +506,22 @@ class AsyncOrchestrator:
                 execution_time_ms=execution_time_ms,
             )
     
-    def get_metrics(self) -> Dict[str, Any]:
+    async def get_metrics(self) -> Dict[str, Any]:
         """Get current orchestrator metrics."""
+        # Get cache stats
+        cache_stats = await self.cache.get_stats()
+        
+        # Get connection pool stats
+        pool_stats = await self.connection_pool.get_pool_stats()
+        
         return {
             "registered_tools": len(self.registry._tools),
             "registered_chains": len(self.registry._chains),
             "active_tasks": len(self._active_tasks),
             "cached_results": len(self._results_cache),
             "speculation_tasks": len(self._speculation_tasks),
+            "cache": cache_stats,
+            "connection_pools": pool_stats,
             "config": {
                 "max_parallel_tools": self.config.max_parallel_tools,
                 "tool_timeout_ms": self.config.tool_timeout_ms,
@@ -363,6 +558,13 @@ class AsyncOrchestrator:
         self._active_tasks.clear()
         self._results_cache.clear()
         self._speculation_tasks.clear()
+        
+        # Cleanup caching and connection pooling
+        try:
+            await self.cache.backend.clear()
+            await self.connection_pool.close_all()
+        except Exception as e:
+            logger.warning(f"Error during cleanup: {e}")
         
         logger.info("AsyncOrchestrator cleanup completed")
     
