@@ -1,57 +1,32 @@
-# Quantum-Enhanced Async Toolformer Orchestrator
+# Async Toolformer Orchestrator
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Async](https://img.shields.io/badge/async-asyncio-green.svg)](https://docs.python.org/3/library/asyncio.html)
-[![Quantum Inspired](https://img.shields.io/badge/quantum-inspired-purple.svg)](https://quantum-computing.ibm.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![OpenAI Compatible](https://img.shields.io/badge/OpenAI-GPT--4o-blue.svg)](https://openai.com)
-[![Global Ready](https://img.shields.io/badge/global-i18n%20%7C%20GDPR-brightgreen.svg)](https://github.com/danieleschmidt/quantum-inspired-task-planner)
 
-Advanced asyncio runtime with quantum-inspired task planning that enables intelligent parallel execution of LLM tools with superposition-based optimization, entanglement-driven coordination, and coherence-preserving orchestration. Built for GPT-4o's blazing fast tool-calling API with enterprise-grade security, compliance, and global deployment capabilities.
+Asyncio runtime that lets a single LLM call many tools in parallel while respecting rate limits and cancelling stale branches. Built for GPT-4o's 5× faster tool-calling API (July 2025).
 
 ## 🚀 Overview
 
-Most LLM tool-calling libraries assume sequential chain-of-thought execution. With GPT-4o's blazing fast parallel tool calls, this leaves massive performance on the table. Our quantum-enhanced orchestrator revolutionizes LLM tool execution with:
+Most LLM tool-calling libraries assume sequential chain-of-thought execution. With GPT-4o's blazing fast parallel tool calls, this leaves massive performance on the table. This orchestrator enables:
 
-### 🌟 Core Features
-- **Quantum-Inspired Planning**: Superposition-based task optimization for optimal execution paths
-- **Parallel Execution**: Call 50+ tools simultaneously with intelligent coordination
-- **Entanglement Coordination**: Advanced task dependency management and synchronization
-- **Coherence Preservation**: Maintain consistency across distributed tool executions
-- **Smart Rate Limiting**: Per-API and global rate limit management with adaptive backpressure
-
-### 🛡️ Enterprise Security & Compliance
-- **Quantum Security**: Enhanced token generation with quantum-resistant cryptography
-- **Global Compliance**: GDPR, CCPA, PDPA, LGPD compliance automation
-- **Multi-Language Support**: 14 languages with regional compliance frameworks
-- **Advanced Validation**: Comprehensive input sanitization and security checks
-- **Audit Trails**: Complete compliance logging and data governance
-
-### ⚡ Performance Optimizations
+- **Parallel Execution**: Call 50+ tools simultaneously from a single LLM decision
+- **Smart Rate Limiting**: Per-API and global rate limit management with backpressure
 - **Branch Cancellation**: Kill irrelevant tool paths as soon as better results arrive
 - **Speculative Execution**: Pre-fetch likely tool calls before LLM confirms
 - **Result Streaming**: Stream partial results as tools complete
-- **Auto-Scaling**: Dynamic resource allocation based on workload
-- **Deadlock Prevention**: Advanced concurrency management with conflict resolution
 
-## ⚡ Performance Benchmarks
+## ⚡ Performance
 
-| Scenario | Sequential | Standard Async | **Quantum Enhanced** | Speedup |
-|----------|-----------|---------------|---------------------|---------|
-| Web search (5 queries) | 2,340ms | 487ms | 312ms | **7.5×** |
-| Multi-API data fetch | 5,670ms | 892ms | 523ms | **10.8×** |
-| Code analysis (10 files) | 8,920ms | 1,205ms | 687ms | **13.0×** |
-| Complex research task | 45,300ms | 6,780ms | 3,124ms | **14.5×** |
-| Global compliance check | 12,450ms | 2,340ms | 1,156ms | **10.8×** |
-| Multi-language processing | 8,760ms | 1,890ms | 945ms | **9.3×** |
+| Scenario | Sequential (baseline) | **Async Orchestrator** | Speedup |
+|----------|---------------------|----------------------|---------|
+| Web search (5 queries) | 2,340ms | 487ms | 4.8× |
+| Multi-API data fetch | 5,670ms | 892ms | 6.4× |
+| Code analysis (10 files) | 8,920ms | 1,205ms | 7.4× |
+| Complex research task | 45,300ms | 6,780ms | 6.7× |
 
-*Benchmarked with GPT-4o-2025-07, quantum optimization enabled, and 100ms average tool latency*
-
-### 🔬 Quantum Performance Benefits
-- **Superposition Optimization**: 35-45% reduction in execution time through parallel path exploration
-- **Entanglement Coordination**: 25-30% improvement in dependency resolution
-- **Coherence Management**: 15-20% reduction in failed operations and retries
-- **Adaptive Scaling**: 40-50% better resource utilization under varying loads
+*Benchmarked with GPT-4o-2025-07 and 100ms average tool latency*
 
 ## 📋 Requirements
 
@@ -90,9 +65,7 @@ pip install -e ".[dev]"
 
 ```python
 import asyncio
-from async_toolformer import QuantumAsyncOrchestrator, Tool
-from async_toolformer.quantum_planner import QuantumInspiredPlanner
-from async_toolformer.quantum_security import QuantumSecurityManager, SecurityLevel
+from async_toolformer import AsyncOrchestrator, Tool
 from openai import AsyncOpenAI
 
 # Define your tools
@@ -107,36 +80,20 @@ async def analyze_code(filename: str) -> dict:
     await asyncio.sleep(0.3)
     return {"complexity": 42, "issues": []}
 
-# Create quantum-enhanced orchestrator
-orchestrator = QuantumAsyncOrchestrator(
+# Create orchestrator
+orchestrator = AsyncOrchestrator(
     llm_client=AsyncOpenAI(),
     tools=[web_search, analyze_code],
     max_parallel=20,
-    enable_speculation=True,
-    # Quantum enhancements
-    enable_quantum_optimization=True,
-    coherence_threshold=0.8,
-    superposition_depth=3,
-    # Security & compliance
-    security_level=SecurityLevel.HIGH,
-    enable_gdpr_compliance=True,
-    enable_audit_logging=True
+    enable_speculation=True
 )
 
-# Execute with quantum-optimized parallel execution
+# Execute with parallel tools
 async def main():
-    result = await orchestrator.quantum_execute(
-        "Research the latest Python async patterns and analyze our codebase for improvements",
-        optimize_plan=True,
-        enable_entanglement=True,
-        security_context="research_task"
+    result = await orchestrator.execute(
+        "Research the latest Python async patterns and analyze our codebase for improvements"
     )
-    print(f"Quantum execution result: {result}")
-    
-    # Get execution analytics
-    analytics = orchestrator.get_quantum_analytics()
-    print(f"Superposition paths explored: {analytics['paths_explored']}")
-    print(f"Coherence maintained: {analytics['coherence_score']:.2f}")
+    print(result)
 
 asyncio.run(main())
 ```
