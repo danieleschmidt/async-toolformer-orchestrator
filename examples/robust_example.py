@@ -97,7 +97,8 @@ async def main():
         if result.get('results'):
             for j, tool_result in enumerate(result['results']):
                 status = "✅" if tool_result.success else "❌"
-                print(f"    {status} {tool_result.tool_name}: {tool_result.data[:50]}...")
+                data_preview = str(tool_result.data)[:50] if tool_result.data else "None"
+                print(f"    {status} {tool_result.tool_name}: {data_preview}...")
         print()
         
         await asyncio.sleep(0.5)  # Brief delay between attempts
