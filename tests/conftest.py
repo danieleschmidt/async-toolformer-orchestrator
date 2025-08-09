@@ -87,6 +87,12 @@ def mock_anthropic_client() -> AsyncMock:
 
 
 @pytest.fixture
+def mock_llm_client(mock_openai_client) -> AsyncMock:
+    """Generic mock LLM client for backward compatibility."""
+    return mock_openai_client
+
+
+@pytest.fixture
 def mock_redis() -> AsyncMock:
     """Mock Redis client for testing."""
     redis = AsyncMock()

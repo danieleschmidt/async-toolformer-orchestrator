@@ -110,7 +110,7 @@ async def main():
     print("📈 Example 3: Orchestrator Metrics")
     print("-" * 30)
     
-    metrics = orchestrator.get_metrics()
+    metrics = await orchestrator.get_metrics()
     for key, value in metrics.items():
         print(f"{key}: {value}")
     

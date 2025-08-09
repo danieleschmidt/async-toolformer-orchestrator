@@ -498,7 +498,7 @@ class QuantumAsyncOrchestrator(AsyncOrchestrator):
         """Get a visualization of the current quantum state."""
         return self.quantum_planner.visualize_quantum_state()
     
-    def get_enhanced_metrics(self) -> Dict[str, Any]:
+    async def get_enhanced_metrics(self) -> Dict[str, Any]:
         """Get enhanced metrics including quantum information."""
         base_metrics = await self.get_metrics()
         quantum_metrics = self.quantum_planner.get_quantum_metrics()

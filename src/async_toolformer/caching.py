@@ -4,17 +4,37 @@ import asyncio
 import hashlib
 import time
 import pickle
+import zlib
+import json
 from typing import Any, Dict, Optional, List, Union
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import logging
+from enum import Enum
 
-logger = logging.getLogger(__name__)
+from .simple_structured_logging import get_logger
+
+logger = get_logger(__name__)
+
+
+class CompressionType(Enum):
+    """Compression algorithms."""
+    NONE = "none"
+    ZLIB = "zlib"
+    # Could add more: GZIP, LZ4, etc.
+
+
+class EvictionPolicy(Enum):
+    """Cache eviction policies."""
+    LRU = "lru"  # Least Recently Used
+    LFU = "lfu"  # Least Frequently Used 
+    TTL = "ttl"  # Time To Live only
+    ADAPTIVE = "adaptive"  # Intelligent eviction
 
 
 @dataclass
 class CacheEntry:
-    """Cache entry with metadata."""
+    """Enhanced cache entry with compression and metadata."""
     
     key: str
     value: Any
@@ -22,6 +42,10 @@ class CacheEntry:
     accessed_at: float
     access_count: int = 0
     ttl: Optional[float] = None
+    compressed: bool = False
+    compression_type: CompressionType = CompressionType.NONE
+    original_size_bytes: int = 0
+    compressed_size_bytes: int = 0
     
     @property
     def is_expired(self) -> bool:
@@ -35,10 +59,34 @@ class CacheEntry:
         """Get age of cache entry in seconds."""
         return time.time() - self.created_at
     
+    @property
+    def compression_ratio(self) -> float:
+        """Get compression ratio."""
+        if self.original_size_bytes == 0:
+            return 1.0
+        return self.compressed_size_bytes / self.original_size_bytes
+    
+    @property
+    def access_frequency(self) -> float:
+        """Get access frequency (accesses per hour)."""
+        if self.age_seconds == 0:
+            return 0.0
+        hours = self.age_seconds / 3600
+        return self.access_count / hours if hours > 0 else self.access_count
+    
     def touch(self) -> None:
         """Update access information."""
         self.accessed_at = time.time()
         self.access_count += 1
+    
+    def get_priority_score(self) -> float:
+        """Get priority score for eviction (higher = keep longer)."""
+        # Combine access frequency, recency, and size efficiency
+        frequency_score = min(self.access_frequency, 10.0) / 10.0  # Cap at 10/hour
+        recency_score = max(0, 1.0 - (self.age_seconds / 3600))  # Decay over 1 hour
+        size_score = self.compression_ratio  # Better compression = higher score
+        
+        return (frequency_score * 0.5) + (recency_score * 0.3) + (size_score * 0.2)
 
 
 class CacheBackend(ABC):

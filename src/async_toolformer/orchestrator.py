@@ -11,6 +11,10 @@ from .llm_integration import LLMIntegration, create_llm_integration
 from .simple_rate_limiter import SimpleRateLimiter
 from .caching import ToolResultCache, create_memory_cache
 from .connection_pool import ConnectionPoolManager, PoolConfig
+from .simple_structured_logging import get_logger, CorrelationContext, log_execution_time
+from .error_recovery import error_recovery, RecoveryPolicy, RecoveryStrategy
+from .health_monitor import health_monitor
+from .input_validation import tool_validator, ValidationLevel
 from .exceptions import (
     OrchestratorError,
     ToolExecutionError,
@@ -19,7 +23,7 @@ from .exceptions import (
     RateLimitError,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AsyncOrchestrator:
@@ -102,8 +106,17 @@ class AsyncOrchestrator:
         self._results_cache: Dict[str, ToolResult] = {}
         self._speculation_tasks: Dict[str, asyncio.Task] = {}
         
+        # Set up error recovery policies
+        self._setup_recovery_policies()
+        
+        # Register health checks
+        self._register_health_checks()
+        
         logger.info(
-            f"AsyncOrchestrator initialized with {len(self.registry._tools)} tools"
+            "AsyncOrchestrator initialized successfully",
+            registered_tools=len(self.registry._tools),
+            max_parallel_tools=self.config.max_parallel_tools,
+            tool_timeout_ms=self.config.tool_timeout_ms
         )
     
     def register_tool(self, tool: ToolFunction) -> None:
@@ -115,6 +128,91 @@ class AsyncOrchestrator:
         """Register a tool chain function."""
         self.registry.register_chain(chain)
         logger.debug(f"Registered tool chain: {chain.__name__}")
+    
+    def _setup_recovery_policies(self):
+        """Set up error recovery policies for different components."""
+        
+        # LLM integration recovery - retry with exponential backoff
+        error_recovery.register_policy(
+            "llm_integration",
+            RecoveryPolicy(
+                strategy=RecoveryStrategy.RETRY,
+                max_retries=3,
+                backoff_factor=2.0,
+                timeout_ms=self.config.llm_timeout_ms
+            )
+        )
+        
+        # Tool execution recovery - circuit breaker for failing tools
+        error_recovery.register_policy(
+            "tool_execution",
+            RecoveryPolicy(
+                strategy=RecoveryStrategy.GRACEFUL_DEGRADATION,
+                max_retries=1,
+                timeout_ms=self.config.total_timeout_ms
+            )
+        )
+        
+        # Individual tool recovery - retry with backoff
+        error_recovery.register_policy(
+            "single_tool",
+            RecoveryPolicy(
+                strategy=RecoveryStrategy.RETRY,
+                max_retries=2,
+                backoff_factor=1.5,
+                timeout_ms=self.config.tool_timeout_ms
+            )
+        )
+        
+        logger.debug("Error recovery policies configured")
+    
+    def _register_health_checks(self):
+        """Register orchestrator-specific health checks."""
+        
+        from .health_monitor import HealthCheck
+        
+        async def orchestrator_health():
+            """Check orchestrator health."""
+            try:
+                metrics = await self.get_metrics()
+                
+                # Check if we have tools registered
+                if metrics.get("registered_tools", 0) == 0:
+                    return {
+                        "status": "degraded",
+                        "message": "No tools registered"
+                    }
+                
+                # Check active tasks
+                active_tasks = metrics.get("active_tasks", 0)
+                if active_tasks > self.config.max_parallel_tools * 2:
+                    return {
+                        "status": "degraded",
+                        "message": f"High number of active tasks: {active_tasks}"
+                    }
+                
+                return {
+                    "status": "healthy",
+                    "message": "Orchestrator functioning normally",
+                    "details": {
+                        "registered_tools": metrics.get("registered_tools"),
+                        "active_tasks": active_tasks
+                    }
+                }
+                
+            except Exception as e:
+                return {
+                    "status": "unhealthy",
+                    "message": f"Health check failed: {str(e)}"
+                }
+        
+        health_monitor.register_check(HealthCheck(
+            name="orchestrator",
+            check_function=orchestrator_health,
+            interval_seconds=30
+        ))
+        
+        logger.debug("Health checks registered")
     
     def _create_llm_integration_from_client(self, client: Any) -> LLMIntegration:
         """Create LLM integration from a client instance."""
@@ -128,21 +226,24 @@ class AsyncOrchestrator:
             logger.warning(f"Unknown client type: {client_type}, using mock provider")
             return create_llm_integration(use_mock=True)
     
+    @log_execution_time("orchestrator_execute")
     async def execute(
         self,
         prompt: str,
         tools: Optional[List[str]] = None,
         max_parallel: Optional[int] = None,
         timeout_ms: Optional[int] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Execute tools based on LLM decision.
+        Execute tools based on LLM decision with enhanced robustness.
         
         Args:
             prompt: Input prompt for the LLM
             tools: Specific tools to use (defaults to all registered)
             max_parallel: Override max parallel execution
             timeout_ms: Override timeout
+            user_id: User identifier for tracking
             
         Returns:
             Dictionary containing execution results
@@ -150,49 +251,114 @@ class AsyncOrchestrator:
         start_time = time.time()
         execution_id = f"exec_{int(start_time * 1000)}"
         
-        try:
-            logger.info(f"Starting execution {execution_id}")
-            
-            # Get LLM decision on which tools to call
-            tool_calls = await self._get_llm_tool_calls(prompt, tools)
-            
-            if not tool_calls:
-                logger.info(f"No tools called for execution {execution_id}")
+        # Set up correlation context for distributed tracing
+        with CorrelationContext(
+            execution_id_value=execution_id,
+            user_id_value=user_id or ""
+        ):
+            try:
+                logger.info(
+                    "Starting orchestrator execution",
+                    prompt_length=len(prompt),
+                    requested_tools=tools,
+                    max_parallel=max_parallel,
+                    timeout_ms=timeout_ms
+                )
+                
+                # Validate and sanitize prompt input
+                validation_result = tool_validator.validate_and_sanitize(
+                    {"prompt": prompt, "tools": tools or []},
+                    "orchestrator.execute"
+                )
+                
+                if not validation_result.is_valid:
+                    logger.error(
+                        "Input validation failed",
+                        errors=validation_result.errors
+                    )
+                    return {
+                        "execution_id": execution_id,
+                        "error": "Input validation failed",
+                        "validation_errors": validation_result.errors,
+                        "total_time_ms": (time.time() - start_time) * 1000,
+                        "status": "validation_failed",
+                    }
+                
+                # Use sanitized inputs
+                sanitized_data = validation_result.sanitized_data
+                clean_prompt = sanitized_data["prompt"]
+                clean_tools = sanitized_data["tools"]
+                
+                # Get LLM decision on which tools to call with error recovery
+                tool_calls = await error_recovery.execute_with_recovery(
+                    "llm_integration",
+                    self._get_llm_tool_calls,
+                    clean_prompt,
+                    clean_tools
+                )
+                
+                if not tool_calls:
+                    logger.info("No tools selected by LLM")
+                    return {
+                        "execution_id": execution_id,
+                        "results": [],
+                        "total_time_ms": (time.time() - start_time) * 1000,
+                        "status": "no_tools_called",
+                    }
+                
+                logger.info(
+                    "LLM selected tools for execution",
+                    tool_count=len(tool_calls),
+                    selected_tools=[tc["name"] for tc in tool_calls]
+                )
+                
+                # Execute tools in parallel with recovery
+                results = await error_recovery.execute_with_recovery(
+                    "tool_execution",
+                    self._execute_tools_parallel,
+                    tool_calls,
+                    max_parallel or self.config.max_parallel_tools,
+                    timeout_ms or self.config.total_timeout_ms,
+                )
+                
+                total_time_ms = (time.time() - start_time) * 1000
+                successful_count = sum(1 for r in results if r.success)
+                
+                logger.info(
+                    "Orchestrator execution completed",
+                    total_time_ms=total_time_ms,
+                    tools_executed=len(results),
+                    successful_tools=successful_count,
+                    success_rate=successful_count / len(results) if results else 0
+                )
+                
                 return {
                     "execution_id": execution_id,
-                    "results": [],
-                    "total_time_ms": (time.time() - start_time) * 1000,
-                    "status": "no_tools_called",
+                    "results": results,
+                    "total_time_ms": total_time_ms,
+                    "status": "completed",
+                    "tools_executed": len(results),
+                    "successful_tools": successful_count,
+                    "success_rate": successful_count / len(results) if results else 0,
                 }
-            
-            logger.info(f"Executing {len(tool_calls)} tools for {execution_id}")
-            
-            # Execute tools in parallel
-            results = await self._execute_tools_parallel(
-                tool_calls,
-                max_parallel or self.config.max_parallel_tools,
-                timeout_ms or self.config.total_timeout_ms,
-            )
-            
-            total_time_ms = (time.time() - start_time) * 1000
-            
-            return {
-                "execution_id": execution_id,
-                "results": results,
-                "total_time_ms": total_time_ms,
-                "status": "completed",
-                "tools_executed": len(results),
-                "successful_tools": sum(1 for r in results if r.success),
-            }
-            
-        except Exception as e:
-            logger.error(f"Execution {execution_id} failed: {e}")
-            return {
-                "execution_id": execution_id,
-                "error": str(e),
-                "total_time_ms": (time.time() - start_time) * 1000,
-                "status": "failed",
-            }
+                
+            except Exception as e:
+                total_time_ms = (time.time() - start_time) * 1000
+                
+                logger.error(
+                    "Orchestrator execution failed",
+                    error=e,
+                    total_time_ms=total_time_ms,
+                    execution_stage="unknown"
+                )
+                
+                return {
+                    "execution_id": execution_id,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "total_time_ms": total_time_ms,
+                    "status": "failed",
+                }
     
     async def stream_execute(
         self,
@@ -386,19 +552,49 @@ class AsyncOrchestrator:
                 timeout_seconds=timeout_ms / 1000.0,
             )
     
+    @log_execution_time("single_tool_execution")
     async def _execute_single_tool(
         self, tool_name: str, args: Dict[str, Any]
     ) -> ToolResult:
-        """Execute a single tool with timing and error handling."""
+        """Execute a single tool with comprehensive error handling and recovery."""
         start_time = time.time()
         
         # Get tool metadata
         tool_metadata = self.registry.get_tool(tool_name)
         if not tool_metadata:
-            raise ToolExecutionError(
+            error = ToolExecutionError(
                 tool_name=tool_name,
                 message=f"Tool '{tool_name}' not found in registry",
             )
+            logger.error("Tool not found in registry", tool_name=tool_name)
+            raise error
+        
+        # Validate tool inputs
+        validation_result = tool_validator.validate_tool_input(tool_name, args)
+        if not validation_result.is_valid:
+            logger.error(
+                "Tool input validation failed",
+                tool_name=tool_name,
+                errors=validation_result.errors
+            )
+            return ToolResult.error_result(
+                tool_name=tool_name,
+                error=ToolExecutionError(
+                    tool_name=tool_name,
+                    message=f"Input validation failed: {validation_result.errors}"
+                ),
+                execution_time_ms=(time.time() - start_time) * 1000
+            )
+        
+        # Use validated arguments
+        clean_args = validation_result.sanitized_data
+        
+        logger.debug(
+            "Starting tool execution",
+            tool_name=tool_name,
+            arguments=clean_args,
+            priority=tool_metadata.priority
+        )
         
         # Check cache first
         cached_result = await self.cache.get_cached_result(tool_name, args)

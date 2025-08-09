@@ -224,16 +224,63 @@ class MockProvider(LLMProvider):
         if self.mock_responses:
             return self.mock_responses
         
-        # Generate mock calls based on available tools
+        # Generate intelligent mock calls based on prompt and available tools
         tool_calls = []
-        for i, tool in enumerate(tools[:3]):  # Mock: call first 3 tools
-            tool_call = ToolCall(
-                name=tool["name"],
-                arguments={},
-                id=f"mock_{i}",
-                metadata={"mock": True}
-            )
-            tool_calls.append(tool_call)
+        prompt_lower = prompt.lower()
+        
+        for i, tool in enumerate(tools):
+            tool_name = tool["name"]
+            arguments = {}
+            
+            # Smart argument extraction based on tool type
+            if "search" in tool_name.lower() or "web" in tool_name.lower():
+                if "python" in prompt_lower or "asyncio" in prompt_lower:
+                    arguments = {"query": "python asyncio programming"}
+                elif "research" in prompt_lower:
+                    arguments = {"query": "async patterns research"}
+                else:
+                    arguments = {"query": "information search"}
+            
+            elif "analyze" in tool_name.lower() or "code" in tool_name.lower():
+                if "async" in prompt_lower:
+                    arguments = {"filename": "async_patterns.py"}
+                else:
+                    arguments = {"filename": "example_file.py"}
+            
+            elif "weather" in tool_name.lower():
+                if "san francisco" in prompt_lower or "sf" in prompt_lower:
+                    arguments = {"city": "San Francisco"}
+                elif "new york" in prompt_lower or "ny" in prompt_lower:
+                    arguments = {"city": "New York"}
+                else:
+                    arguments = {"city": "San Francisco"}
+            
+            elif "calculate" in tool_name.lower() or "math" in tool_name.lower():
+                if "average" in prompt_lower:
+                    arguments = {"expression": "(72 + 68) / 2"}
+                else:
+                    arguments = {"expression": "2 + 2"}
+            
+            # Only include tools that make sense for the prompt
+            should_include = False
+            if "research" in prompt_lower and ("search" in tool_name or "analyze" in tool_name):
+                should_include = True
+            elif "weather" in prompt_lower and "weather" in tool_name:
+                should_include = True
+            elif ("calculate" in prompt_lower or "average" in prompt_lower) and "calculate" in tool_name:
+                should_include = True
+            elif not any(keyword in prompt_lower for keyword in ["research", "weather", "calculate"]):
+                # For general prompts, include first few tools
+                should_include = i < 3
+            
+            if should_include:
+                tool_call = ToolCall(
+                    name=tool_name,
+                    arguments=arguments,
+                    id=f"mock_{len(tool_calls)}",
+                    metadata={"mock": True}
+                )
+                tool_calls.append(tool_call)
         
         return tool_calls
     
