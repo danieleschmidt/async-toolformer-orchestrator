@@ -132,47 +132,92 @@ class Tool:
             priority=self.priority,
         )
         
+        # Add test-expected attributes for compatibility
+        func._tool_description = self.description
+        func._tool_timeout_ms = self.timeout_ms
+        func._tool_schema = self._generate_schema(func)
+        
         return func
+    
+    def _generate_schema(self, func: ToolFunction) -> Dict[str, Any]:
+        """Generate tool schema from function signature."""
+        sig = inspect.signature(func)
+        properties = {}
+        required = []
+        
+        for name, param in sig.parameters.items():
+            param_schema = {"type": "string"}  # Default type
+            
+            # Handle type annotations
+            if param.annotation != inspect.Parameter.empty:
+                if param.annotation == int:
+                    param_schema["type"] = "integer"
+                elif param.annotation == float:
+                    param_schema["type"] = "number"
+                elif param.annotation == bool:
+                    param_schema["type"] = "boolean"
+            
+            # Handle default values
+            if param.default != inspect.Parameter.empty:
+                param_schema["default"] = param.default
+            else:
+                required.append(name)
+            
+            properties[name] = param_schema
+        
+        return {
+            "type": "object",
+            "parameters": {
+                "type": "object",
+                "properties": properties,
+                "required": required
+            }
+        }
 
 
-class ToolChain:
-    """Decorator for creating complex tool workflows."""
+def ToolChain(
+    func: Optional[ToolFunction] = None,
+    *,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    parallel_sections: Optional[List[str]] = None,
+):
+    """
+    Decorator for creating complex tool workflows.
     
-    def __init__(
-        self,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        parallel_sections: Optional[List[str]] = None,
-    ):
-        """
-        Initialize tool chain decorator.
-        
-        Args:
-            name: Name of the tool chain
-            description: Description of the tool chain
-            parallel_sections: Sections that can run in parallel
-        """
-        self.name = name
-        self.description = description
-        self.parallel_sections = parallel_sections or []
+    Can be used with or without parameters:
+    @ToolChain
+    async def my_chain(): ...
     
-    def __call__(self, func: ToolFunction) -> ToolFunction:
-        """Apply the decorator to a function."""
-        if not asyncio.iscoroutinefunction(func):
-            raise ValueError(f"ToolChain {func.__name__} must be an async function")
+    @ToolChain(name="custom_chain")
+    async def my_chain(): ...
+    """
+    def decorator(f: ToolFunction) -> ToolFunction:
+        if not asyncio.iscoroutinefunction(f):
+            raise ValueError(f"ToolChain {f.__name__} must be an async function")
         
-        chain_name = self.name or func.__name__
-        chain_description = self.description or f"Tool chain: {chain_name}"
+        chain_name = name or f.__name__
+        chain_description = description or f"Tool chain: {chain_name}"
         
         # Store chain metadata
-        func._chain_metadata = {
+        f._chain_metadata = {
             "name": chain_name,
             "description": chain_description,
-            "parallel_sections": self.parallel_sections,
-            "function": func,
+            "parallel_sections": parallel_sections or [],
+            "function": f,
         }
         
-        return func
+        # Add test-expected attributes for compatibility
+        f._is_tool_chain = True
+        
+        return f
+    
+    # Handle usage without parameters (@ToolChain)
+    if func is not None:
+        return decorator(func)
+    
+    # Handle usage with parameters (@ToolChain(...))
+    return decorator
 
 
 class ToolRegistry:
