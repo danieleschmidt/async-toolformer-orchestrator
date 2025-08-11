@@ -1,0 +1,57 @@
+{
+  "dashboard": {
+    "title": "Async Toolformer Orchestrator",
+    "tags": [
+      "async-toolformer",
+      "production"
+    ],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Requests per Second",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(async_toolformer_requests_total[5m])",
+            "legendFormat": "RPS"
+          }
+        ]
+      },
+      {
+        "title": "Response Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, async_toolformer_response_time_bucket)",
+            "legendFormat": "95th percentile"
+          }
+        ]
+      },
+      {
+        "title": "Cache Hit Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "async_toolformer_cache_hit_rate",
+            "legendFormat": "Cache Hit Rate"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(async_toolformer_errors_total[5m])",
+            "legendFormat": "Errors/sec"
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

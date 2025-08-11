@@ -1,0 +1,19 @@
+apiVersion: v2
+name: async-toolformer-orchestrator
+description: "Async Toolformer Orchestrator - Parallel LLM tool execution"
+version: 1.0.0
+appVersion: 1.0.0
+type: application
+keywords:
+  - async
+  - orchestrator
+  - llm
+  - tools
+  - performance
+home: https://github.com/async-toolformer/orchestrator
+sources:
+  - https://github.com/async-toolformer/orchestrator
+maintainers:
+  -
+    name: "Terragon Labs"
+    email: support@terragonlabs.com

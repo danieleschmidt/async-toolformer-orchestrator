@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: async-toolformer-orchestrator-service
+  namespace: async-toolformer
+  labels:
+    app: async-toolformer-orchestrator
+spec:
+  selector:
+    app: async-toolformer-orchestrator
+  ports:
+    -
+      name: http
+      port: 80
+      targetPort: 8000
+      protocol: TCP
+    -
+      name: metrics
+      port: 9000
+      targetPort: 9000
+      protocol: TCP
+  type: ClusterIP

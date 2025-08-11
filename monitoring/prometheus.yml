@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+rule_files:
+  - async_toolformer_rules.yml
+scrape_configs:
+  -
+    job_name: async-toolformer
+    kubernetes_sd_configs:
+      -
+        role: endpoints
+    relabel_configs:
+      -
+        source_labels:
+          - __meta_kubernetes_service_name
+        action: keep
+        regex: async-toolformer-orchestrator-service
+alerting:
+  alertmanagers:
+    -
+      static_configs:
+        -
+          targets:
+            - alertmanager:9093

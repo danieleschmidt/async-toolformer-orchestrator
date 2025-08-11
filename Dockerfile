@@ -1,98 +1,34 @@
-# Multi-stage build for async-toolformer-orchestrator
-FROM python:3.11-slim as builder
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+FROM python:3.11-slim as base
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Create virtual environment
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Copy requirements
-COPY pyproject.toml /tmp/
-WORKDIR /tmp
-
-# Install Python dependencies
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install -e ".[full]"
-
-# Production stage
-FROM python:3.11-slim as production
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/opt/venv/bin:$PATH" \
-    PYTHONPATH="/app:$PYTHONPATH"
-
-# Install runtime dependencies only
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Copy virtual environment from builder stage
-COPY --from=builder /opt/venv /opt/venv
-
-# Create non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
 # Copy application code
-COPY --chown=appuser:appuser src/ /app/src/
-COPY --chown=appuser:appuser README.md LICENSE /app/
+COPY src/ ./src/
+COPY *.py ./
 
-# Install the package in development mode
-RUN pip install -e .
-
-# Create directories for logs and data
-RUN mkdir -p /app/logs /app/data && \
-    chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash app \
+    && chown -R app:app /app
+USER app
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import async_toolformer; print('OK')" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
 
-# Default command
-CMD ["python", "-m", "async_toolformer"]
+# Expose ports
+EXPOSE 8000 9000
 
-# Development stage
-FROM production as development
-
-# Switch back to root for installing dev dependencies
-USER root
-
-# Install development dependencies
-RUN pip install -e ".[dev]"
-
-# Install additional dev tools
-RUN apt-get update && apt-get install -y \
-    git \
-    vim \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Switch back to appuser
-USER appuser
-
-# Set development environment
-ENV ENVIRONMENT=development \
-    LOG_LEVEL=DEBUG
-
-# Override entrypoint for development
-CMD ["python", "-c", "print('Development container ready')"]
+# Start application
+CMD ["python", "-m", "src.async_toolformer.main"]

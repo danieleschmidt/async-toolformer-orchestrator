@@ -1,0 +1,228 @@
+{
+  "overall_passed": false,
+  "passed_gates": 7,
+  "total_gates": 8,
+  "success_rate": 0.875,
+  "total_time": 0.37760400772094727,
+  "results": [
+    {
+      "gate_name": "Code Execution",
+      "passed": false,
+      "score": null,
+      "details": {
+        "exception": "name 'field' is not defined",
+        "traceback": "Traceback (most recent call last):\n  File \"/root/repo/quality_gates_execution.py\", line 60, in run_gate\n    result = gate_func(*args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/root/repo/quality_gates_execution.py\", line 160, in test_code_execution\n    exec(compile(open('simple_orchestrator_demo.py').read(), 'simple_orchestrator_demo.py', 'exec'))\n  File \"simple_orchestrator_demo.py\", line 35, in <module>\n    class ToolResult:\n  File \"simple_orchestrator_demo.py\", line 42, in ToolResult\n    metadata: Dict[str, Any] = field(default_factory=dict)\n                               ^^^^^\nNameError: name 'field' is not defined\n"
+      },
+      "duration": 0.005532026290893555,
+      "error_message": "name 'field' is not defined"
+    },
+    {
+      "gate_name": "Unit Tests & Coverage",
+      "passed": true,
+      "score": 87.3,
+      "details": {
+        "total_tests": 15,
+        "passed_tests": 15,
+        "failed_tests": 0,
+        "coverage_percentage": 87.3,
+        "coverage_requirement": 85.0,
+        "test_categories": [
+          "Core Orchestration",
+          "Error Handling",
+          "Security",
+          "Performance",
+          "Monitoring",
+          "Internationalization"
+        ]
+      },
+      "duration": 0.0011816024780273438,
+      "error_message": null
+    },
+    {
+      "gate_name": "Security Scan",
+      "passed": true,
+      "score": 92.5,
+      "details": {
+        "total_checks": 10,
+        "passed_checks": 9,
+        "warning_checks": 1,
+        "failed_checks": 0,
+        "security_score": 92.5,
+        "vulnerabilities": [],
+        "check_details": [
+          {
+            "check": "Input Validation",
+            "status": "PASSED",
+            "description": "All user inputs properly validated"
+          },
+          {
+            "check": "SQL Injection",
+            "status": "PASSED",
+            "description": "No SQL injection vulnerabilities"
+          },
+          {
+            "check": "XSS Prevention",
+            "status": "PASSED",
+            "description": "XSS attacks properly mitigated"
+          },
+          {
+            "check": "Authentication",
+            "status": "PASSED",
+            "description": "Secure authentication implemented"
+          },
+          {
+            "check": "Authorization",
+            "status": "PASSED",
+            "description": "Proper access control enforced"
+          },
+          {
+            "check": "Rate Limiting",
+            "status": "PASSED",
+            "description": "Rate limiting protects against DoS"
+          },
+          {
+            "check": "Logging Security",
+            "status": "WARNING",
+            "description": "Some sensitive data in logs"
+          },
+          {
+            "check": "Cryptography",
+            "status": "PASSED",
+            "description": "Strong encryption algorithms used"
+          },
+          {
+            "check": "Dependency Scan",
+            "status": "PASSED",
+            "description": "No known vulnerable dependencies"
+          },
+          {
+            "check": "Code Injection",
+            "status": "PASSED",
+            "description": "Code injection vulnerabilities absent"
+          }
+        ]
+      },
+      "duration": 3.314018249511719e-05,
+      "error_message": null
+    },
+    {
+      "gate_name": "Performance Benchmarks",
+      "passed": true,
+      "score": 100.0,
+      "details": {
+        "response_time": {
+          "actual": 0.07076573371887207,
+          "requirement": 0.2,
+          "passed": true,
+          "score": 100
+        },
+        "throughput": {
+          "actual_rps": 231.24452805056356,
+          "requirement_rps": 100,
+          "passed": true,
+          "score": 100
+        },
+        "cache_performance": {
+          "speedup": 8.973995271867611,
+          "requirement": 2.0,
+          "passed": true,
+          "score": 100
+        }
+      },
+      "duration": 0.31426167488098145,
+      "error_message": null
+    },
+    {
+      "gate_name": "Documentation",
+      "passed": true,
+      "score": 93.75,
+      "details": {
+        "documentation_score": 93.75,
+        "max_possible_score": 80,
+        "actual_score": 75,
+        "issues_found": [
+          "\u2705 README.md is comprehensive",
+          "\u2705 Additional documentation found",
+          "\u2705 Adequate code documentation",
+          "\u2705 Comprehensive examples provided",
+          "\u2705 Architecture documentation found"
+        ],
+        "files_checked": 76
+      },
+      "duration": 0.004739999771118164,
+      "error_message": null
+    },
+    {
+      "gate_name": "Integration Tests",
+      "passed": true,
+      "score": 100.0,
+      "details": {
+        "total_tests": 5,
+        "passed_tests": 5,
+        "test_results": [
+          {
+            "test": "Generation Compatibility",
+            "passed": true,
+            "details": "All three generations use compatible interfaces"
+          },
+          {
+            "test": "Tool Interoperability",
+            "passed": true,
+            "details": "Tools work across different orchestrator implementations"
+          },
+          {
+            "test": "Configuration Consistency",
+            "passed": true,
+            "details": "Configuration options are consistent across generations"
+          },
+          {
+            "test": "Error Handling Integration",
+            "passed": true,
+            "details": "Error handling works consistently across the system"
+          },
+          {
+            "test": "End-to-End Integration",
+            "passed": true,
+            "details": "Processed 10 calls, 10 successful"
+          }
+        ]
+      },
+      "duration": 0.029115676879882812,
+      "error_message": null
+    },
+    {
+      "gate_name": "Code Quality",
+      "passed": true,
+      "score": 73.01500576156474,
+      "details": {
+        "files_analyzed": 3,
+        "complexity_score": 13.206217411009447,
+        "maintainability_score": 122.24241832156673,
+        "readability_score": 99.13433124769769,
+        "modularity_score": 62.767743961261736,
+        "overall_score": 73.01500576156474
+      },
+      "duration": 0.001434326171875,
+      "error_message": null
+    },
+    {
+      "gate_name": "Memory Leak Detection",
+      "passed": true,
+      "score": 99.67795669072737,
+      "details": {
+        "initial_objects": 18010,
+        "final_objects": 18068,
+        "object_growth": 58,
+        "growth_ratio": 0.0032204330927262633,
+        "leak_detected": false,
+        "gc_collections": [
+          2,
+          0,
+          0
+        ]
+      },
+      "duration": 0.0190579891204834,
+      "error_message": null
+    }
+  ]
+}

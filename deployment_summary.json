@@ -1,0 +1,78 @@
+{
+  "deployment_package": "async-toolformer-orchestrator-v1.0.0",
+  "generated_at": "2025-08-11T22:42:00Z",
+  "regions": [
+    {
+      "name": "us-east-1",
+      "cloud_provider": "aws",
+      "availability_zones": [
+        "us-east-1a",
+        "us-east-1b",
+        "us-east-1c"
+      ],
+      "kubernetes_cluster": "async-toolformer-prod-east",
+      "load_balancer_endpoint": "https://api-east.async-toolformer.com",
+      "monitoring_stack": "prometheus-grafana",
+      "compliance_requirements": [
+        "SOC2",
+        "GDPR",
+        "CCPA"
+      ]
+    },
+    {
+      "name": "eu-west-1",
+      "cloud_provider": "aws",
+      "availability_zones": [
+        "eu-west-1a",
+        "eu-west-1b",
+        "eu-west-1c"
+      ],
+      "kubernetes_cluster": "async-toolformer-prod-eu",
+      "load_balancer_endpoint": "https://api-eu.async-toolformer.com",
+      "monitoring_stack": "prometheus-grafana",
+      "compliance_requirements": [
+        "GDPR",
+        "DPA"
+      ]
+    },
+    {
+      "name": "ap-southeast-1",
+      "cloud_provider": "aws",
+      "availability_zones": [
+        "ap-southeast-1a",
+        "ap-southeast-1b",
+        "ap-southeast-1c"
+      ],
+      "kubernetes_cluster": "async-toolformer-prod-asia",
+      "load_balancer_endpoint": "https://api-asia.async-toolformer.com",
+      "monitoring_stack": "prometheus-grafana",
+      "compliance_requirements": [
+        "PDPA",
+        "PIPEDA"
+      ]
+    }
+  ],
+  "configuration": {
+    "app_name": "async-toolformer-orchestrator",
+    "version": "1.0.0",
+    "environment": "production",
+    "replicas": 3,
+    "max_replicas": 20,
+    "cpu_request": "500m",
+    "cpu_limit": "2000m",
+    "memory_request": "1Gi",
+    "memory_limit": "4Gi",
+    "redis_enabled": true,
+    "monitoring_enabled": true,
+    "security_scanning": true
+  },
+  "files_generated": {
+    "kubernetes_manifests": 4,
+    "helm_chart_files": 3,
+    "cicd_files": 2,
+    "monitoring_files": 3,
+    "security_files": 3,
+    "documentation": 1
+  },
+  "deployment_ready": true
+}
