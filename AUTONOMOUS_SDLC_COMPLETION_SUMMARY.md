@@ -65,7 +65,7 @@
 ## 🌍 GLOBAL-FIRST PRODUCTION DEPLOYMENT
 
 **Multi-Region Deployment:** 3 regions (US East, EU West, Asia Southeast)  
-**Generated Files:** 16 production-ready deployment artifacts
+**Generated Files:** 15 production-ready deployment artifacts (GitHub workflows excluded due to permission restrictions)
 
 ### Production Package Includes:
 - **Kubernetes Manifests:** Complete K8s deployment configs
