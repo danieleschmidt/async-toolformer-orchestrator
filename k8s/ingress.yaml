@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: async-toolformer-orchestrator-ingress
+  namespace: async-toolformer
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: 100
+    nginx.ingress.kubernetes.io/rate-limit-window: 1m
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    -
+      hosts:
+        - api.async-toolformer.com
+      secretName: async-toolformer-orchestrator-tls
+  rules:
+    -
+      host: api.async-toolformer.com
+      http:
+        paths:
+          -
+            path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: async-toolformer-orchestrator-service
+                port:
+                  number: 80

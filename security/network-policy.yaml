@@ -1,0 +1,55 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: async-toolformer-orchestrator-network-policy
+  namespace: async-toolformer
+spec:
+  podSelector:
+    matchLabels:
+      app: async-toolformer-orchestrator
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    -
+      from:
+        -
+          namespaceSelector:
+            matchLabels:
+              name: nginx-ingress
+        -
+          namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        -
+          protocol: TCP
+          port: 8000
+        -
+          protocol: TCP
+          port: 9000
+  egress:
+    -
+      to:
+        -
+          namespaceSelector:
+            matchLabels:
+              name: redis
+      ports:
+        -
+          protocol: TCP
+          port: 6379
+    -
+      to:
+        -
+
+      ports:
+        -
+          protocol: TCP
+          port: 53
+        -
+          protocol: UDP
+          port: 53
+        -
+          protocol: TCP
+          port: 443

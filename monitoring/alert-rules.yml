@@ -1,0 +1,31 @@
+groups:
+  -
+    name: async-toolformer-alerts
+    rules:
+      -
+        alert: HighErrorRate
+        expr: "rate(async_toolformer_errors_total[5m]) > 0.1"
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors per second"
+      -
+        alert: HighResponseTime
+        expr: "histogram_quantile(0.95, async_toolformer_response_time_bucket) > 1.0"
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s"
+      -
+        alert: LowCacheHitRate
+        expr: "async_toolformer_cache_hit_rate < 0.5"
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low cache hit rate"
+          description: "Cache hit rate is {{ $value }}"

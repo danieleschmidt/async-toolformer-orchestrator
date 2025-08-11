@@ -1,0 +1,63 @@
+replicaCount: 3
+image:
+  repository: async-toolformer-orchestrator
+  pullPolicy: Always
+  tag: 1.0.0
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+ingress:
+  enabled: True
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: 100
+  hosts:
+    -
+      host: api.async-toolformer.com
+      paths:
+        -
+          path: /
+          pathType: Prefix
+  tls:
+    -
+      secretName: async-toolformer-orchestrator-tls
+      hosts:
+        - api.async-toolformer.com
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+autoscaling:
+  enabled: True
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+config:
+  environment: production
+  logLevel: INFO
+  maxConcurrent: 50
+  cacheStrategy: adaptive
+  optimizationStrategy: aggressive
+  enableSpeculation: True
+  redis:
+    enabled: True
+    host: redis-master
+    port: 6379
+monitoring:
+  enabled: True
+  serviceMonitor:
+    enabled: True
+    port: 9000
+    path: /metrics
+security:
+  podSecurityPolicy: True
+  networkPolicy: True
+  runAsNonRoot: True
+  runAsUser: 1000
+  readOnlyRootFilesystem: True

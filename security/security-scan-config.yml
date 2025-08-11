@@ -1,0 +1,17 @@
+tools:
+  bandit:
+    enabled: True
+    config: .bandit
+    targets:
+      - src/
+  safety:
+    enabled: True
+    requirements: requirements.txt
+  trivy:
+    enabled: True
+    image_scan: True
+    fs_scan: True
+policies:
+  fail_on_high: True
+  fail_on_critical: True
+  ignore_unfixed: False
