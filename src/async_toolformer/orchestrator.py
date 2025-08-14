@@ -25,9 +25,12 @@ from .exceptions import (
 # Generation 2 Enhancements: Advanced security and monitoring
 from .advanced_security import security_manager, ThreatLevel
 from .comprehensive_monitoring import monitor, MetricType
+from .enhanced_reliability import reliability_manager, with_reliability_tracking
+from .advanced_validation import advanced_validator
 # Generation 3 Enhancements: Quantum cache and auto-scaling
 from .simple_quantum_cache import simple_quantum_cache
-# from .auto_scaling import auto_scaler, ScalingDirection  # Simplified for demo
+from .adaptive_scaling import adaptive_scaler
+from .intelligent_caching import intelligent_cache
 
 logger = get_logger(__name__)
 
@@ -118,16 +121,21 @@ class AsyncOrchestrator:
         # Generation 3 Enhancements: Quantum cache and auto-scaling integration
         self._quantum_cache_enabled = True
         self._auto_scaling_enabled = True
+        self._intelligent_caching_enabled = True
         
-        # Initialize quantum cache with optimized settings
-        if self._quantum_cache_enabled:
-            # Replace default cache with quantum cache
+        # Initialize intelligent cache with adaptive optimization
+        if self._intelligent_caching_enabled:
+            self.cache = intelligent_cache
+            logger.info("Intelligent cache enabled with adaptive optimization")
+        elif self._quantum_cache_enabled:
+            # Fallback to quantum cache
             self.cache = simple_quantum_cache
             logger.info("Quantum cache enabled for advanced performance optimization")
         
-        # Initialize auto-scaling for worker pool management
+        # Initialize adaptive auto-scaling for dynamic resource management
         if self._auto_scaling_enabled:
-            logger.info("Auto-scaling enabled for dynamic resource management")
+            asyncio.create_task(adaptive_scaler.start_monitoring())
+            logger.info("Adaptive auto-scaling enabled for dynamic resource management")
         
         # Register comprehensive monitoring health checks (disabled for testing)
         # monitor.register_health_check("orchestrator_health", self._orchestrator_health_check)
@@ -337,10 +345,11 @@ class AsyncOrchestrator:
                     timeout_ms=timeout_ms
                 )
                 
-                # Validate and sanitize prompt input
-                validation_result = tool_validator.validate_and_sanitize(
+                # Generation 2 Enhancement: Advanced validation
+                validation_result = await advanced_validator.validate_and_sanitize(
                     {"prompt": prompt, "tools": tools or []},
-                    "orchestrator.execute"
+                    "orchestrator.execute",
+                    strict_mode=True
                 )
                 
                 if not validation_result.is_valid:
@@ -384,8 +393,8 @@ class AsyncOrchestrator:
                     selected_tools=[tc["name"] for tc in tool_calls]
                 )
                 
-                # Execute tools in parallel with recovery
-                results = await error_recovery.execute_with_recovery(
+                # Generation 2 Enhancement: Execute tools with reliability tracking
+                results = await with_reliability_tracking(
                     "tool_execution",
                     self._execute_tools_parallel,
                     tool_calls,
@@ -681,19 +690,19 @@ class AsyncOrchestrator:
             logger.error("Tool not found in registry", tool_name=tool_name)
             raise error
         
-        # Validate tool inputs
-        validation_result = tool_validator.validate_tool_input(tool_name, args)
+        # Generation 2 Enhancement: Advanced tool input validation
+        validation_result = await advanced_validator.validate_tool_input(tool_name, args)
         if not validation_result.is_valid:
             logger.error(
                 "Tool input validation failed",
                 tool_name=tool_name,
-                errors=validation_result.errors
+                issues=[issue.message for issue in validation_result.issues]
             )
             return ToolResult.error_result(
                 tool_name=tool_name,
                 error=ToolExecutionError(
                     tool_name=tool_name,
-                    message=f"Input validation failed: {validation_result.errors}"
+                    message=f"Input validation failed: {[issue.message for issue in validation_result.issues]}"
                 ),
                 execution_time_ms=(time.time() - start_time) * 1000
             )
