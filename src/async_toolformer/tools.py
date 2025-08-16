@@ -3,9 +3,10 @@
 import asyncio
 import functools
 import inspect
-from typing import Any, Awaitable, Callable, Dict, List, Optional, TypeVar, Union
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Any, TypeVar
 
 from .exceptions import ToolExecutionError
 
@@ -16,21 +17,21 @@ ToolFunction = Callable[..., Awaitable[Any]]
 @dataclass
 class ToolResult:
     """Result from a tool execution."""
-    
+
     tool_name: str
     success: bool
     data: Any
     execution_time_ms: float
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
     timestamp: datetime
-    
+
     @classmethod
     def success_result(
         cls,
         tool_name: str,
         data: Any,
         execution_time_ms: float,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> "ToolResult":
         """Create a successful tool result."""
         return cls(
@@ -41,14 +42,14 @@ class ToolResult:
             metadata=metadata or {},
             timestamp=datetime.now(timezone.utc),
         )
-    
+
     @classmethod
     def error_result(
         cls,
         tool_name: str,
         error: Exception,
         execution_time_ms: float,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> "ToolResult":
         """Create an error tool result."""
         return cls(
@@ -64,16 +65,16 @@ class ToolResult:
 @dataclass
 class ToolMetadata:
     """Metadata for a registered tool."""
-    
+
     name: str
     description: str
     function: ToolFunction
-    timeout_ms: Optional[int] = None
-    rate_limit_group: Optional[str] = None
-    retry_attempts: Optional[int] = None
-    tags: List[str] = None
+    timeout_ms: int | None = None
+    rate_limit_group: str | None = None
+    retry_attempts: int | None = None
+    tags: list[str] = None
     priority: int = 0
-    
+
     def __post_init__(self) -> None:
         if self.tags is None:
             self.tags = []
@@ -81,21 +82,21 @@ class ToolMetadata:
 
 class Tool:
     """Decorator for registering async tools."""
-    
+
     def __init__(
         self,
         description: str,
         *,
-        name: Optional[str] = None,
-        timeout_ms: Optional[int] = None,
-        rate_limit_group: Optional[str] = None,
-        retry_attempts: Optional[int] = None,
-        tags: Optional[List[str]] = None,
+        name: str | None = None,
+        timeout_ms: int | None = None,
+        rate_limit_group: str | None = None,
+        retry_attempts: int | None = None,
+        tags: list[str] | None = None,
         priority: int = 0,
     ):
         """
         Initialize tool decorator.
-        
+
         Args:
             description: Description of what the tool does
             name: Custom name for the tool (defaults to function name)
@@ -112,14 +113,14 @@ class Tool:
         self.retry_attempts = retry_attempts
         self.tags = tags or []
         self.priority = priority
-    
+
     def __call__(self, func: ToolFunction) -> ToolFunction:
         """Apply the decorator to a function."""
         if not asyncio.iscoroutinefunction(func):
             raise ValueError(f"Tool {func.__name__} must be an async function")
-        
+
         tool_name = self.name or func.__name__
-        
+
         # Store metadata on the function
         func._tool_metadata = ToolMetadata(
             name=tool_name,
@@ -131,23 +132,23 @@ class Tool:
             tags=self.tags,
             priority=self.priority,
         )
-        
+
         # Add test-expected attributes for compatibility
         func._tool_description = self.description
         func._tool_timeout_ms = self.timeout_ms
         func._tool_schema = self._generate_schema(func)
-        
+
         return func
-    
-    def _generate_schema(self, func: ToolFunction) -> Dict[str, Any]:
+
+    def _generate_schema(self, func: ToolFunction) -> dict[str, Any]:
         """Generate tool schema from function signature."""
         sig = inspect.signature(func)
         properties = {}
         required = []
-        
+
         for name, param in sig.parameters.items():
             param_schema = {"type": "string"}  # Default type
-            
+
             # Handle type annotations
             if param.annotation != inspect.Parameter.empty:
                 if param.annotation == int:
@@ -156,15 +157,15 @@ class Tool:
                     param_schema["type"] = "number"
                 elif param.annotation == bool:
                     param_schema["type"] = "boolean"
-            
+
             # Handle default values
             if param.default != inspect.Parameter.empty:
                 param_schema["default"] = param.default
             else:
                 required.append(name)
-            
+
             properties[name] = param_schema
-        
+
         return {
             "type": "object",
             "parameters": {
@@ -176,29 +177,29 @@ class Tool:
 
 
 def ToolChain(
-    func: Optional[ToolFunction] = None,
+    func: ToolFunction | None = None,
     *,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    parallel_sections: Optional[List[str]] = None,
+    name: str | None = None,
+    description: str | None = None,
+    parallel_sections: list[str] | None = None,
 ):
     """
     Decorator for creating complex tool workflows.
-    
+
     Can be used with or without parameters:
     @ToolChain
     async def my_chain(): ...
-    
+
     @ToolChain(name="custom_chain")
     async def my_chain(): ...
     """
     def decorator(f: ToolFunction) -> ToolFunction:
         if not asyncio.iscoroutinefunction(f):
             raise ValueError(f"ToolChain {f.__name__} must be an async function")
-        
+
         chain_name = name or f.__name__
         chain_description = description or f"Tool chain: {chain_name}"
-        
+
         # Store chain metadata
         f._chain_metadata = {
             "name": chain_name,
@@ -206,75 +207,75 @@ def ToolChain(
             "parallel_sections": parallel_sections or [],
             "function": f,
         }
-        
+
         # Add test-expected attributes for compatibility
         f._is_tool_chain = True
-        
+
         return f
-    
+
     # Handle usage without parameters (@ToolChain)
     if func is not None:
         return decorator(func)
-    
+
     # Handle usage with parameters (@ToolChain(...))
     return decorator
 
 
 class ToolRegistry:
     """Registry for managing tools and tool chains."""
-    
+
     def __init__(self) -> None:
-        self._tools: Dict[str, ToolMetadata] = {}
-        self._chains: Dict[str, Dict[str, Any]] = {}
-    
+        self._tools: dict[str, ToolMetadata] = {}
+        self._chains: dict[str, dict[str, Any]] = {}
+
     def register_tool(self, func: ToolFunction) -> None:
         """Register a tool function."""
         if not hasattr(func, '_tool_metadata'):
             raise ValueError(f"Function {func.__name__} is not decorated with @Tool")
-        
+
         metadata = func._tool_metadata
         self._tools[metadata.name] = metadata
-    
+
     def register_chain(self, func: ToolFunction) -> None:
         """Register a tool chain function."""
         if not hasattr(func, '_chain_metadata'):
             raise ValueError(f"Function {func.__name__} is not decorated with @ToolChain")
-        
+
         metadata = func._chain_metadata
         self._chains[metadata['name']] = metadata
-    
-    def get_tool(self, name: str) -> Optional[ToolMetadata]:
+
+    def get_tool(self, name: str) -> ToolMetadata | None:
         """Get a tool by name."""
         return self._tools.get(name)
-    
-    def get_chain(self, name: str) -> Optional[Dict[str, Any]]:
+
+    def get_chain(self, name: str) -> dict[str, Any] | None:
         """Get a tool chain by name."""
         return self._chains.get(name)
-    
-    def list_tools(self, tags: Optional[List[str]] = None) -> List[ToolMetadata]:
+
+    def list_tools(self, tags: list[str] | None = None) -> list[ToolMetadata]:
         """List all registered tools, optionally filtered by tags."""
         tools = list(self._tools.values())
-        
+
         if tags:
             tools = [
                 tool for tool in tools
                 if any(tag in tool.tags for tag in tags)
             ]
-        
+
         return sorted(tools, key=lambda t: t.priority, reverse=True)
-    
-    def list_chains(self) -> List[Dict[str, Any]]:
+
+    def list_chains(self) -> list[dict[str, Any]]:
         """List all registered tool chains."""
         return list(self._chains.values())
 
 
 # Utility functions for tool composition
-async def parallel(*tasks: Awaitable[T]) -> List[T]:
+async def parallel(*tasks: Awaitable[T]) -> list[T]:
     """Execute multiple async tasks in parallel."""
     return await asyncio.gather(*tasks)
 
 
-async def sequential(*tasks: Awaitable[T]) -> List[T]:
+async def sequential(*tasks: Awaitable[T]) -> list[T]:
     """Execute multiple async tasks sequentially."""
     results = []
     for task in tasks:
@@ -307,7 +308,7 @@ def retry(attempts: int = 3, delay: float = 1.0, backoff: float = 1.0) -> Callab
         async def wrapper(*args, **kwargs):
             last_exception = None
             current_delay = delay
-            
+
             for attempt in range(attempts):
                 try:
                     return await func(*args, **kwargs)
@@ -316,7 +317,7 @@ def retry(attempts: int = 3, delay: float = 1.0, backoff: float = 1.0) -> Callab
                     if attempt < attempts - 1:  # Don't sleep on last attempt
                         await asyncio.sleep(current_delay)
                         current_delay *= backoff
-            
+
             # If we get here, all attempts failed
             raise ToolExecutionError(
                 tool_name=func.__name__,

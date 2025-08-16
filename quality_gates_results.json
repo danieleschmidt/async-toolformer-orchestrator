@@ -3,7 +3,7 @@
   "passed_gates": 7,
   "total_gates": 8,
   "success_rate": 0.875,
-  "total_time": 0.37760400772094727,
+  "total_time": 0.507835865020752,
   "results": [
     {
       "gate_name": "Code Execution",
@@ -13,7 +13,7 @@
         "exception": "name 'field' is not defined",
         "traceback": "Traceback (most recent call last):\n  File \"/root/repo/quality_gates_execution.py\", line 60, in run_gate\n    result = gate_func(*args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/root/repo/quality_gates_execution.py\", line 160, in test_code_execution\n    exec(compile(open('simple_orchestrator_demo.py').read(), 'simple_orchestrator_demo.py', 'exec'))\n  File \"simple_orchestrator_demo.py\", line 35, in <module>\n    class ToolResult:\n  File \"simple_orchestrator_demo.py\", line 42, in ToolResult\n    metadata: Dict[str, Any] = field(default_factory=dict)\n                               ^^^^^\nNameError: name 'field' is not defined\n"
       },
-      "duration": 0.005532026290893555,
+      "duration": 0.005532503128051758,
       "error_message": "name 'field' is not defined"
     },
     {
@@ -35,7 +35,7 @@
           "Internationalization"
         ]
       },
-      "duration": 0.0011816024780273438,
+      "duration": 0.001224517822265625,
       "error_message": null
     },
     {
@@ -102,7 +102,7 @@
           }
         ]
       },
-      "duration": 3.314018249511719e-05,
+      "duration": 3.504753112792969e-05,
       "error_message": null
     },
     {
@@ -111,25 +111,25 @@
       "score": 100.0,
       "details": {
         "response_time": {
-          "actual": 0.07076573371887207,
+          "actual": 0.07075738906860352,
           "requirement": 0.2,
           "passed": true,
           "score": 100
         },
         "throughput": {
-          "actual_rps": 231.24452805056356,
+          "actual_rps": 231.42570857261407,
           "requirement_rps": 100,
           "passed": true,
           "score": 100
         },
         "cache_performance": {
-          "speedup": 8.973995271867611,
+          "speedup": 7.841286307053942,
           "requirement": 2.0,
           "passed": true,
           "score": 100
         }
       },
-      "duration": 0.31426167488098145,
+      "duration": 0.31346893310546875,
       "error_message": null
     },
     {
@@ -147,9 +147,9 @@
           "\u2705 Comprehensive examples provided",
           "\u2705 Architecture documentation found"
         ],
-        "files_checked": 76
+        "files_checked": 4224
       },
-      "duration": 0.004739999771118164,
+      "duration": 0.1369800567626953,
       "error_message": null
     },
     {
@@ -187,7 +187,7 @@
           }
         ]
       },
-      "duration": 0.029115676879882812,
+      "duration": 0.029311656951904297,
       "error_message": null
     },
     {
@@ -202,18 +202,18 @@
         "modularity_score": 62.767743961261736,
         "overall_score": 73.01500576156474
       },
-      "duration": 0.001434326171875,
+      "duration": 0.0016262531280517578,
       "error_message": null
     },
     {
       "gate_name": "Memory Leak Detection",
       "passed": true,
-      "score": 99.67795669072737,
+      "score": 99.67884828349945,
       "details": {
-        "initial_objects": 18010,
-        "final_objects": 18068,
+        "initial_objects": 18060,
+        "final_objects": 18118,
         "object_growth": 58,
-        "growth_ratio": 0.0032204330927262633,
+        "growth_ratio": 0.003211517165005537,
         "leak_detected": false,
         "gc_collections": [
           2,
@@ -221,7 +221,7 @@
           0
         ]
       },
-      "duration": 0.0190579891204834,
+      "duration": 0.017159461975097656,
       "error_message": null
     }
   ]

@@ -1,12 +1,12 @@
 """Custom exceptions for the Async Toolformer Orchestrator."""
 
-from typing import Any, Optional
+from typing import Any
 
 
 class OrchestratorError(Exception):
     """Base exception for all orchestrator-related errors."""
 
-    def __init__(self, message: str, details: Optional[dict[str, Any]] = None) -> None:
+    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(message)
         self.details = details or {}
 
@@ -18,8 +18,8 @@ class ToolExecutionError(OrchestratorError):
         self,
         tool_name: str,
         message: str,
-        original_error: Optional[Exception] = None,
-        details: Optional[dict[str, Any]] = None,
+        original_error: Exception | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, details)
         self.tool_name = tool_name
@@ -33,8 +33,8 @@ class RateLimitError(OrchestratorError):
         self,
         service: str,
         limit_type: str,
-        retry_after: Optional[float] = None,
-        details: Optional[dict[str, Any]] = None,
+        retry_after: float | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         message = f"Rate limit exceeded for {service} ({limit_type})"
         if retry_after:
@@ -52,7 +52,7 @@ class TimeoutError(OrchestratorError):
         self,
         operation: str,
         timeout_seconds: float,
-        details: Optional[dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         message = f"Operation '{operation}' timed out after {timeout_seconds}s"
         super().__init__(message, details)
@@ -67,7 +67,7 @@ class ConfigurationError(OrchestratorError):
         self,
         parameter: str,
         message: str,
-        details: Optional[dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(f"Configuration error for '{parameter}': {message}", details)
         self.parameter = parameter
@@ -79,8 +79,8 @@ class SpeculationError(OrchestratorError):
     def __init__(
         self,
         message: str,
-        speculation_id: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        speculation_id: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, details)
         self.speculation_id = speculation_id
@@ -92,8 +92,8 @@ class BranchCancellationError(OrchestratorError):
     def __init__(
         self,
         message: str,
-        branch_id: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        branch_id: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, details)
         self.branch_id = branch_id
@@ -106,8 +106,8 @@ class ToolChainError(OrchestratorError):
         self,
         chain_name: str,
         message: str,
-        original_error: Optional[Exception] = None,
-        details: Optional[dict[str, Any]] = None,
+        original_error: Exception | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(f"Chain '{chain_name}': {message}", details)
         self.chain_name = chain_name

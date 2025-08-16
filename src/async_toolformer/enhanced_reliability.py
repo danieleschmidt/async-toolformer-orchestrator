@@ -1,13 +1,12 @@
 """Enhanced reliability features for Generation 2 robustness."""
 
 import asyncio
-import hashlib
-import json
+import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
-import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 class ReliabilityLevel(Enum):
     """Reliability levels for different operations."""
     BASIC = auto()
-    ENHANCED = auto() 
+    ENHANCED = auto()
     MAXIMUM = auto()
 
 
@@ -31,7 +30,7 @@ class FailurePattern(Enum):
 @dataclass
 class ReliabilityMetrics:
     """Metrics for tracking system reliability."""
-    
+
     uptime_seconds: float = 0.0
     total_requests: int = 0
     successful_requests: int = 0
@@ -41,14 +40,14 @@ class ReliabilityMetrics:
     availability: float = 1.0
     mtbf_seconds: float = 0.0  # Mean Time Between Failures
     mttr_seconds: float = 0.0  # Mean Time To Recovery
-    failure_patterns: Dict[FailurePattern, int] = field(default_factory=dict)
-    
+    failure_patterns: dict[FailurePattern, int] = field(default_factory=dict)
+
     def calculate_derived_metrics(self) -> None:
         """Calculate derived reliability metrics."""
         if self.total_requests > 0:
             self.error_rate = self.failed_requests / self.total_requests
             self.availability = self.successful_requests / self.total_requests
-        
+
         # Calculate MTBF if we have failure data
         if self.failed_requests > 0 and self.uptime_seconds > 0:
             self.mtbf_seconds = self.uptime_seconds / self.failed_requests
@@ -57,59 +56,59 @@ class ReliabilityMetrics:
 @dataclass
 class FailureContext:
     """Context information about a failure."""
-    
+
     operation: str
     error_type: str
     error_message: str
     timestamp: float
     execution_time_ms: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     retry_attempt: int = 0
-    failure_pattern: Optional[FailurePattern] = None
+    failure_pattern: FailurePattern | None = None
 
 
 class ReliabilityManager:
     """Manager for enhanced system reliability."""
-    
+
     def __init__(self, reliability_level: ReliabilityLevel = ReliabilityLevel.ENHANCED):
         self.reliability_level = reliability_level
         self.metrics = ReliabilityMetrics()
-        self.failure_history: List[FailureContext] = []
-        self.circuit_breakers: Dict[str, 'CircuitBreaker'] = {}
+        self.failure_history: list[FailureContext] = []
+        self.circuit_breakers: dict[str, CircuitBreaker] = {}
         self.start_time = time.time()
         self.last_failure_time = 0.0
-        
+
         # Pattern detection
-        self.failure_patterns: Dict[str, List[float]] = {}
+        self.failure_patterns: dict[str, list[float]] = {}
         self.pattern_detection_window = 300  # 5 minutes
-        
+
     async def record_success(self, operation: str, execution_time_ms: float) -> None:
         """Record a successful operation."""
         self.metrics.total_requests += 1
         self.metrics.successful_requests += 1
-        
+
         # Update average response time
         current_avg = self.metrics.average_response_time_ms
         total_requests = self.metrics.total_requests
         self.metrics.average_response_time_ms = (
             (current_avg * (total_requests - 1) + execution_time_ms) / total_requests
         )
-        
+
         # Update circuit breaker
         if operation in self.circuit_breakers:
             await self.circuit_breakers[operation].record_success()
-            
+
     async def record_failure(
-        self, 
-        operation: str, 
-        error_type: str, 
+        self,
+        operation: str,
+        error_type: str,
         error_message: str,
         execution_time_ms: float,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         retry_attempt: int = 0
     ) -> FailureContext:
         """Record a failed operation."""
-        
+
         failure_context = FailureContext(
             operation=operation,
             error_type=error_type,
@@ -119,24 +118,24 @@ class ReliabilityManager:
             metadata=metadata or {},
             retry_attempt=retry_attempt
         )
-        
+
         # Detect failure patterns
         pattern = await self._detect_failure_pattern(failure_context)
         failure_context.failure_pattern = pattern
-        
+
         self.failure_history.append(failure_context)
         self.metrics.total_requests += 1
         self.metrics.failed_requests += 1
         self.last_failure_time = time.time()
-        
+
         # Update circuit breaker
         if operation not in self.circuit_breakers:
             self.circuit_breakers[operation] = CircuitBreaker(operation)
         await self.circuit_breakers[operation].record_failure()
-        
+
         # Trim old failure history
         self._trim_failure_history()
-        
+
         logger.warning(
             f"Operation failed: {operation}",
             extra={
@@ -146,121 +145,121 @@ class ReliabilityManager:
                 "retry_attempt": retry_attempt
             }
         )
-        
+
         return failure_context
-        
-    async def _detect_failure_pattern(self, failure_context: FailureContext) -> Optional[FailurePattern]:
+
+    async def _detect_failure_pattern(self, failure_context: FailureContext) -> FailurePattern | None:
         """Detect failure patterns from recent history."""
-        
+
         operation = failure_context.operation
         current_time = time.time()
-        
+
         # Get recent failures for this operation
         recent_failures = [
             f for f in self.failure_history
-            if f.operation == operation and 
+            if f.operation == operation and
             current_time - f.timestamp < self.pattern_detection_window
         ]
-        
+
         if len(recent_failures) < 2:
             return None
-            
+
         # Intermittent failures - alternating success/failure
         if self._is_intermittent_pattern(recent_failures):
             return FailurePattern.INTERMITTENT
-            
+
         # Timeout spiral - increasing timeouts
         if self._is_timeout_spiral_pattern(recent_failures):
             return FailurePattern.TIMEOUT_SPIRAL
-            
+
         # Cascading failures - multiple operations failing together
         if self._is_cascading_pattern(recent_failures, current_time):
             return FailurePattern.CASCADING
-            
+
         # Resource exhaustion - specific error patterns
         if self._is_resource_exhaustion_pattern(recent_failures):
             return FailurePattern.RESOURCE_EXHAUSTION
-            
+
         return None
-        
-    def _is_intermittent_pattern(self, failures: List[FailureContext]) -> bool:
+
+    def _is_intermittent_pattern(self, failures: list[FailureContext]) -> bool:
         """Check if failures show intermittent pattern."""
         if len(failures) < 3:
             return False
-            
+
         # Look for regular intervals between failures
         intervals = []
         for i in range(1, len(failures)):
             interval = failures[i].timestamp - failures[i-1].timestamp
             intervals.append(interval)
-            
+
         # Check if intervals are relatively consistent
         if len(intervals) < 2:
             return False
-            
+
         avg_interval = sum(intervals) / len(intervals)
         variance = sum((i - avg_interval) ** 2 for i in intervals) / len(intervals)
-        
+
         # Low variance indicates regular intermittent pattern
         return variance < (avg_interval * 0.5) ** 2
-        
-    def _is_timeout_spiral_pattern(self, failures: List[FailureContext]) -> bool:
+
+    def _is_timeout_spiral_pattern(self, failures: list[FailureContext]) -> bool:
         """Check if failures show increasing timeout pattern."""
         timeout_failures = [
-            f for f in failures 
+            f for f in failures
             if 'timeout' in f.error_type.lower() or 'timeout' in f.error_message.lower()
         ]
-        
+
         if len(timeout_failures) < 3:
             return False
-            
+
         # Check if execution times are increasing
         times = [f.execution_time_ms for f in timeout_failures[-3:]]
         return all(times[i] < times[i+1] for i in range(len(times)-1))
-        
-    def _is_cascading_pattern(self, failures: List[FailureContext], current_time: float) -> bool:
+
+    def _is_cascading_pattern(self, failures: list[FailureContext], current_time: float) -> bool:
         """Check if multiple operations are failing together."""
         # Get all recent failures across operations
         all_recent_failures = [
             f for f in self.failure_history
             if current_time - f.timestamp < 60  # Last minute
         ]
-        
+
         if len(all_recent_failures) < 3:
             return False
-            
+
         # Count unique operations failing
-        failing_operations = set(f.operation for f in all_recent_failures)
-        
+        failing_operations = {f.operation for f in all_recent_failures}
+
         # Cascading if multiple operations failing simultaneously
         return len(failing_operations) >= 3
-        
-    def _is_resource_exhaustion_pattern(self, failures: List[FailureContext]) -> bool:
+
+    def _is_resource_exhaustion_pattern(self, failures: list[FailureContext]) -> bool:
         """Check if failures indicate resource exhaustion."""
         resource_keywords = ['memory', 'connection', 'pool', 'limit', 'quota', 'throttle']
-        
+
         for failure in failures[-3:]:  # Check last 3 failures
             error_text = (failure.error_type + " " + failure.error_message).lower()
             if any(keyword in error_text for keyword in resource_keywords):
                 return True
-                
+
         return False
-        
+
     def _trim_failure_history(self) -> None:
         """Trim old entries from failure history."""
         current_time = time.time()
         cutoff_time = current_time - (self.pattern_detection_window * 2)  # Keep 2x window
-        
+
         self.failure_history = [
             f for f in self.failure_history
             if f.timestamp > cutoff_time
         ]
-        
+
     async def get_reliability_metrics(self) -> ReliabilityMetrics:
         """Get current reliability metrics."""
         # Update uptime
         self.metrics.uptime_seconds = time.time() - self.start_time
-        
+
         # Calculate MTTR if we have recent failures
         if self.failure_history:
             recent_failures = [
@@ -269,34 +268,34 @@ class ReliabilityManager:
             ]
             if recent_failures:
                 recovery_times = []
-                for i, failure in enumerate(recent_failures[:-1]):
+                for _i, failure in enumerate(recent_failures[:-1]):
                     next_success_time = failure.timestamp + failure.execution_time_ms / 1000
                     recovery_times.append(next_success_time - failure.timestamp)
-                
+
                 if recovery_times:
                     self.metrics.mttr_seconds = sum(recovery_times) / len(recovery_times)
-        
+
         # Calculate pattern frequencies
         pattern_counts = {}
         for failure in self.failure_history[-100:]:  # Last 100 failures
             if failure.failure_pattern:
                 pattern_counts[failure.failure_pattern] = pattern_counts.get(failure.failure_pattern, 0) + 1
-        
+
         self.metrics.failure_patterns = pattern_counts
-        
+
         # Calculate derived metrics
         self.metrics.calculate_derived_metrics()
-        
+
         return self.metrics
-        
+
     async def should_retry(self, operation: str, attempt: int, failure_context: FailureContext) -> bool:
         """Determine if operation should be retried based on reliability analysis."""
-        
+
         # Check circuit breaker
         if operation in self.circuit_breakers:
             if not await self.circuit_breakers[operation].allow_request():
                 return False
-        
+
         # Check failure pattern
         if failure_context.failure_pattern:
             if failure_context.failure_pattern == FailurePattern.CASCADING:
@@ -308,28 +307,28 @@ class ReliabilityManager:
             elif failure_context.failure_pattern == FailurePattern.TIMEOUT_SPIRAL:
                 # Exponential backoff for timeout spirals
                 await asyncio.sleep(min(2 ** attempt, 60))
-        
+
         # Standard retry logic based on reliability level
         max_attempts = {
             ReliabilityLevel.BASIC: 2,
             ReliabilityLevel.ENHANCED: 3,
             ReliabilityLevel.MAXIMUM: 5
         }
-        
+
         return attempt < max_attempts[self.reliability_level]
-        
-    async def get_health_status(self) -> Dict[str, Any]:
+
+    async def get_health_status(self) -> dict[str, Any]:
         """Get system health status based on reliability metrics."""
         metrics = await self.get_reliability_metrics()
-        
+
         # Determine health status
         if metrics.availability >= 0.99:
             status = "healthy"
         elif metrics.availability >= 0.95:
-            status = "degraded"  
+            status = "degraded"
         else:
             status = "unhealthy"
-            
+
         # Check for concerning patterns
         warnings = []
         if FailurePattern.CASCADING in metrics.failure_patterns:
@@ -338,7 +337,7 @@ class ReliabilityManager:
             warnings.append("Timeout spiral pattern detected")
         if metrics.error_rate > 0.05:  # 5% error rate
             warnings.append("High error rate")
-            
+
         return {
             "status": status,
             "availability": metrics.availability,
@@ -364,7 +363,7 @@ class CircuitBreakerState(Enum):
 @dataclass
 class CircuitBreakerConfig:
     """Configuration for circuit breaker."""
-    
+
     failure_threshold: int = 5      # Failures before opening
     timeout_seconds: float = 60.0   # Time before trying half-open
     success_threshold: int = 3      # Successes needed to close
@@ -373,20 +372,20 @@ class CircuitBreakerConfig:
 
 class CircuitBreaker:
     """Circuit breaker implementation for fault tolerance."""
-    
-    def __init__(self, name: str, config: Optional[CircuitBreakerConfig] = None):
+
+    def __init__(self, name: str, config: CircuitBreakerConfig | None = None):
         self.name = name
         self.config = config or CircuitBreakerConfig()
         self.state = CircuitBreakerState.CLOSED
         self.failure_count = 0
         self.success_count = 0
         self.last_failure_time = 0.0
-        self.failure_times: List[float] = []
-        
+        self.failure_times: list[float] = []
+
     async def allow_request(self) -> bool:
         """Check if request should be allowed through."""
         current_time = time.time()
-        
+
         if self.state == CircuitBreakerState.CLOSED:
             return True
         elif self.state == CircuitBreakerState.OPEN:
@@ -398,7 +397,7 @@ class CircuitBreaker:
             return False
         else:  # HALF_OPEN
             return True
-            
+
     async def record_success(self) -> None:
         """Record successful operation."""
         if self.state == CircuitBreakerState.HALF_OPEN:
@@ -407,27 +406,27 @@ class CircuitBreaker:
                 self.state = CircuitBreakerState.CLOSED
                 self.failure_count = 0
                 self.failure_times.clear()
-                
+
     async def record_failure(self) -> None:
         """Record failed operation."""
         current_time = time.time()
         self.last_failure_time = current_time
         self.failure_times.append(current_time)
-        
+
         # Remove old failures outside window
         cutoff_time = current_time - self.config.window_seconds
         self.failure_times = [t for t in self.failure_times if t > cutoff_time]
-        
+
         self.failure_count = len(self.failure_times)
-        
+
         if self.state == CircuitBreakerState.HALF_OPEN:
             # Failed while testing, go back to open
             self.state = CircuitBreakerState.OPEN
         elif self.failure_count >= self.config.failure_threshold:
             # Too many failures, open circuit
             self.state = CircuitBreakerState.OPEN
-            
-    async def get_status(self) -> Dict[str, Any]:
+
+    async def get_status(self) -> dict[str, Any]:
         """Get circuit breaker status."""
         return {
             "state": self.state.name,
@@ -454,24 +453,24 @@ async def with_reliability_tracking(
     **kwargs
 ) -> Any:
     """Execute function with reliability tracking and retry logic."""
-    
+
     for attempt in range(max_retries + 1):
         start_time = time.time()
-        
+
         try:
             # Check if request should proceed
             if not await reliability_manager.circuit_breakers.get(operation, CircuitBreaker("dummy")).allow_request():
                 raise Exception(f"Circuit breaker open for {operation}")
-            
+
             result = await func(*args, **kwargs)
             execution_time_ms = (time.time() - start_time) * 1000
-            
+
             await reliability_manager.record_success(operation, execution_time_ms)
             return result
-            
+
         except Exception as e:
             execution_time_ms = (time.time() - start_time) * 1000
-            
+
             failure_context = await reliability_manager.record_failure(
                 operation=operation,
                 error_type=type(e).__name__,
@@ -479,7 +478,7 @@ async def with_reliability_tracking(
                 execution_time_ms=execution_time_ms,
                 retry_attempt=attempt
             )
-            
+
             # Check if we should retry
             if attempt < max_retries:
                 should_retry = await reliability_manager.should_retry(
@@ -487,6 +486,6 @@ async def with_reliability_tracking(
                 )
                 if should_retry:
                     continue
-                    
+
             # No more retries, re-raise the exception
             raise e

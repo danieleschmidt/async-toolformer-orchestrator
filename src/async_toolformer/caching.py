@@ -1,16 +1,14 @@
 """Advanced caching system for tool results."""
 
 import asyncio
+import contextlib
 import hashlib
-import time
 import pickle
-import zlib
-import json
-from typing import Any, Dict, Optional, List, Union
-from dataclasses import dataclass
+import time
 from abc import ABC, abstractmethod
-import logging
+from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 from .simple_structured_logging import get_logger
 
@@ -27,7 +25,7 @@ class CompressionType(Enum):
 class EvictionPolicy(Enum):
     """Cache eviction policies."""
     LRU = "lru"  # Least Recently Used
-    LFU = "lfu"  # Least Frequently Used 
+    LFU = "lfu"  # Least Frequently Used
     TTL = "ttl"  # Time To Live only
     ADAPTIVE = "adaptive"  # Intelligent eviction
 
@@ -35,37 +33,37 @@ class EvictionPolicy(Enum):
 @dataclass
 class CacheEntry:
     """Enhanced cache entry with compression and metadata."""
-    
+
     key: str
     value: Any
     created_at: float
     accessed_at: float
     access_count: int = 0
-    ttl: Optional[float] = None
+    ttl: float | None = None
     compressed: bool = False
     compression_type: CompressionType = CompressionType.NONE
     original_size_bytes: int = 0
     compressed_size_bytes: int = 0
-    
+
     @property
     def is_expired(self) -> bool:
         """Check if cache entry is expired."""
         if self.ttl is None:
             return False
         return time.time() - self.created_at > self.ttl
-    
+
     @property
     def age_seconds(self) -> float:
         """Get age of cache entry in seconds."""
         return time.time() - self.created_at
-    
+
     @property
     def compression_ratio(self) -> float:
         """Get compression ratio."""
         if self.original_size_bytes == 0:
             return 1.0
         return self.compressed_size_bytes / self.original_size_bytes
-    
+
     @property
     def access_frequency(self) -> float:
         """Get access frequency (accesses per hour)."""
@@ -73,61 +71,61 @@ class CacheEntry:
             return 0.0
         hours = self.age_seconds / 3600
         return self.access_count / hours if hours > 0 else self.access_count
-    
+
     def touch(self) -> None:
         """Update access information."""
         self.accessed_at = time.time()
         self.access_count += 1
-    
+
     def get_priority_score(self) -> float:
         """Get priority score for eviction (higher = keep longer)."""
         # Combine access frequency, recency, and size efficiency
         frequency_score = min(self.access_frequency, 10.0) / 10.0  # Cap at 10/hour
         recency_score = max(0, 1.0 - (self.age_seconds / 3600))  # Decay over 1 hour
         size_score = self.compression_ratio  # Better compression = higher score
-        
+
         return (frequency_score * 0.5) + (recency_score * 0.3) + (size_score * 0.2)
 
 
 class CacheBackend(ABC):
     """Abstract cache backend."""
-    
+
     @abstractmethod
-    async def get(self, key: str) -> Optional[CacheEntry]:
+    async def get(self, key: str) -> CacheEntry | None:
         """Get cache entry by key."""
         pass
-    
+
     @abstractmethod
-    async def set(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
+    async def set(self, key: str, value: Any, ttl: float | None = None) -> None:
         """Set cache entry."""
         pass
-    
+
     @abstractmethod
     async def delete(self, key: str) -> None:
         """Delete cache entry."""
         pass
-    
+
     @abstractmethod
     async def clear(self) -> None:
         """Clear all cache entries."""
         pass
-    
+
     @abstractmethod
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         pass
 
 
 class MemoryCache(CacheBackend):
     """In-memory cache backend with LRU eviction."""
-    
-    def __init__(self, max_size: int = 1000, default_ttl: Optional[float] = None):
+
+    def __init__(self, max_size: int = 1000, default_ttl: float | None = None):
         self.max_size = max_size
         self.default_ttl = default_ttl
-        self._cache: Dict[str, CacheEntry] = {}
-        self._access_order: List[str] = []
+        self._cache: dict[str, CacheEntry] = {}
+        self._access_order: list[str] = []
         self._lock = asyncio.Lock()
-        
+
         # Statistics
         self._stats = {
             'hits': 0,
@@ -136,35 +134,35 @@ class MemoryCache(CacheBackend):
             'deletes': 0,
             'evictions': 0,
         }
-    
-    async def get(self, key: str) -> Optional[CacheEntry]:
+
+    async def get(self, key: str) -> CacheEntry | None:
         """Get cache entry by key."""
         async with self._lock:
             entry = self._cache.get(key)
-            
+
             if entry is None:
                 self._stats['misses'] += 1
                 return None
-            
+
             if entry.is_expired:
                 await self._remove_entry(key)
                 self._stats['misses'] += 1
                 return None
-            
+
             # Update access info and LRU order
             entry.touch()
             self._access_order.remove(key)
             self._access_order.append(key)
-            
+
             self._stats['hits'] += 1
             return entry
-    
-    async def set(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
+
+    async def set(self, key: str, value: Any, ttl: float | None = None) -> None:
         """Set cache entry."""
         async with self._lock:
             now = time.time()
             ttl = ttl or self.default_ttl
-            
+
             entry = CacheEntry(
                 key=key,
                 value=value,
@@ -172,40 +170,40 @@ class MemoryCache(CacheBackend):
                 accessed_at=now,
                 ttl=ttl
             )
-            
+
             # Remove existing entry if present
             if key in self._cache:
                 self._access_order.remove(key)
-            
+
             # Add new entry
             self._cache[key] = entry
             self._access_order.append(key)
-            
+
             # Evict if necessary
             while len(self._cache) > self.max_size:
                 await self._evict_lru()
-            
+
             self._stats['sets'] += 1
-    
+
     async def delete(self, key: str) -> None:
         """Delete cache entry."""
         async with self._lock:
             if key in self._cache:
                 await self._remove_entry(key)
                 self._stats['deletes'] += 1
-    
+
     async def clear(self) -> None:
         """Clear all cache entries."""
         async with self._lock:
             self._cache.clear()
             self._access_order.clear()
-    
-    async def get_stats(self) -> Dict[str, Any]:
+
+    async def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         async with self._lock:
             total_requests = self._stats['hits'] + self._stats['misses']
             hit_rate = (self._stats['hits'] / total_requests) if total_requests > 0 else 0
-            
+
             return {
                 **self._stats,
                 'size': len(self._cache),
@@ -213,14 +211,14 @@ class MemoryCache(CacheBackend):
                 'hit_rate': hit_rate,
                 'total_requests': total_requests,
             }
-    
+
     async def _remove_entry(self, key: str) -> None:
         """Remove entry from cache and access order."""
         if key in self._cache:
             del self._cache[key]
             if key in self._access_order:
                 self._access_order.remove(key)
-    
+
     async def _evict_lru(self) -> None:
         """Evict least recently used entry."""
         if self._access_order:
@@ -231,7 +229,7 @@ class MemoryCache(CacheBackend):
 
 class ToolResultCache:
     """High-level cache for tool execution results."""
-    
+
     def __init__(
         self,
         backend: CacheBackend,
@@ -242,12 +240,12 @@ class ToolResultCache:
         self.enable_compression = enable_compression
         self.hash_args = hash_args
         self._enabled = True
-    
+
     def _generate_cache_key(
         self,
         tool_name: str,
-        args: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None
+        args: dict[str, Any],
+        context: dict[str, Any] | None = None
     ) -> str:
         """Generate cache key for tool execution."""
         if self.hash_args:
@@ -259,52 +257,52 @@ class ToolResultCache:
             # Use simple concatenation (less robust but more readable)
             args_str = "_".join(f"{k}={v}" for k, v in sorted(args.items()))
             key = f"tool:{tool_name}:{args_str}"
-        
+
         if context:
             context_hash = hashlib.md5(str(sorted(context.items())).encode()).hexdigest()[:8]
             key += f":{context_hash}"
-        
+
         return key
-    
+
     async def get_cached_result(
         self,
         tool_name: str,
-        args: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None
-    ) -> Optional[Any]:
+        args: dict[str, Any],
+        context: dict[str, Any] | None = None
+    ) -> Any | None:
         """Get cached result for tool execution."""
         if not self._enabled:
             return None
-        
+
         key = self._generate_cache_key(tool_name, args, context)
-        
+
         try:
             entry = await self.backend.get(key)
             if entry:
                 logger.debug(f"Cache hit for {tool_name}: {key}")
                 return entry.value
-            
+
             logger.debug(f"Cache miss for {tool_name}: {key}")
             return None
-            
+
         except Exception as e:
             logger.warning(f"Cache get error for {key}: {e}")
             return None
-    
+
     async def cache_result(
         self,
         tool_name: str,
-        args: Dict[str, Any],
+        args: dict[str, Any],
         result: Any,
-        ttl: Optional[float] = None,
-        context: Optional[Dict[str, Any]] = None
+        ttl: float | None = None,
+        context: dict[str, Any] | None = None
     ) -> None:
         """Cache result of tool execution."""
         if not self._enabled:
             return
-        
+
         key = self._generate_cache_key(tool_name, args, context)
-        
+
         try:
             # Optionally compress large results
             cached_result = result
@@ -320,31 +318,31 @@ class ToolResultCache:
                 except Exception:
                     # Fall back to uncompressed if compression fails
                     pass
-            
+
             await self.backend.set(key, cached_result, ttl)
             logger.debug(f"Cached result for {tool_name}: {key}")
-            
+
         except Exception as e:
             logger.warning(f"Cache set error for {key}: {e}")
-    
+
     async def invalidate_tool(self, tool_name: str) -> None:
         """Invalidate all cached results for a tool."""
         # This is a simplified implementation
         # In practice, you'd need a more sophisticated approach
         logger.info(f"Cache invalidation requested for tool: {tool_name}")
-    
-    async def get_stats(self) -> Dict[str, Any]:
+
+    async def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         return await self.backend.get_stats()
-    
+
     def enable(self) -> None:
         """Enable caching."""
         self._enabled = True
-    
+
     def disable(self) -> None:
         """Disable caching."""
         self._enabled = False
-    
+
     @property
     def enabled(self) -> bool:
         """Check if caching is enabled."""
@@ -354,7 +352,7 @@ class ToolResultCache:
 # Utility functions for cache configuration
 def create_memory_cache(
     max_size: int = 1000,
-    default_ttl: Optional[float] = 3600,  # 1 hour default
+    default_ttl: float | None = 3600,  # 1 hour default
     enable_compression: bool = False
 ) -> ToolResultCache:
     """Create a memory-based tool result cache."""
@@ -368,23 +366,21 @@ def create_memory_cache(
 # Cache decorators for easy integration
 def cached_tool(
     cache: ToolResultCache,
-    ttl: Optional[float] = None,
-    cache_key_context: Optional[callable] = None
+    ttl: float | None = None,
+    cache_key_context: Any | None = None
 ):
     """Decorator for caching tool results."""
     def decorator(func):
         async def wrapper(*args, **kwargs):
             # Extract tool name
             tool_name = getattr(func, '__name__', 'unknown')
-            
+
             # Generate context if provided
             context = None
             if cache_key_context:
-                try:
+                with contextlib.suppress(Exception):
                     context = cache_key_context(*args, **kwargs)
-                except Exception:
-                    pass
-            
+
             # Try to get cached result
             cached = await cache.get_cached_result(tool_name, kwargs, context)
             if cached is not None:
@@ -399,12 +395,12 @@ def cached_tool(
                         pass  # Fall through to execute function
                 else:
                     return cached
-            
+
             # Execute function and cache result
             result = await func(*args, **kwargs)
             await cache.cache_result(tool_name, kwargs, result, ttl, context)
-            
+
             return result
-        
+
         return wrapper
     return decorator
