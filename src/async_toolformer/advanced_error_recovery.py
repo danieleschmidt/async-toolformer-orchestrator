@@ -7,10 +7,11 @@ self-healing capabilities for the Async Toolformer Orchestrator.
 
 import asyncio
 import time
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 import structlog
 
@@ -66,7 +67,7 @@ class ErrorContext:
     attempt: int
     operation_id: str
     timestamp: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -76,12 +77,12 @@ class RecoveryAttempt:
     timestamp: float
     success: bool
     duration: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class CircuitBreaker:
     """Circuit breaker implementation for fault tolerance."""
-    
+
     def __init__(
         self,
         name: str,
@@ -102,33 +103,33 @@ class CircuitBreaker:
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
         self.success_threshold = success_threshold
-        
+
         self._state = CircuitState.CLOSED
         self._failure_count = 0
         self._success_count = 0
-        self._last_failure_time: Optional[float] = None
-        self._last_attempt_time: Optional[float] = None
-        
+        self._last_failure_time: float | None = None
+        self._last_attempt_time: float | None = None
+
     @property
     def state(self) -> CircuitState:
         """Get current circuit state."""
         return self._state
-        
+
     @property
     def is_closed(self) -> bool:
         """Check if circuit is closed (allowing requests)."""
         return self._state == CircuitState.CLOSED
-        
+
     @property
     def is_open(self) -> bool:
         """Check if circuit is open (failing fast)."""
         return self._state == CircuitState.OPEN
-        
+
     @property
     def is_half_open(self) -> bool:
         """Check if circuit is half-open (testing recovery)."""
         return self._state == CircuitState.HALF_OPEN
-        
+
     def record_success(self) -> None:
         """Record a successful operation."""
         if self._state == CircuitState.HALF_OPEN:
@@ -137,50 +138,50 @@ class CircuitBreaker:
                 self._close_circuit()
         elif self._state == CircuitState.CLOSED:
             self._failure_count = 0  # Reset failure count on success
-            
+
     def record_failure(self) -> None:
         """Record a failed operation."""
         current_time = time.time()
         self._last_failure_time = current_time
-        
+
         if self._state == CircuitState.CLOSED:
             self._failure_count += 1
             if self._failure_count >= self.failure_threshold:
                 self._open_circuit()
         elif self._state == CircuitState.HALF_OPEN:
             self._open_circuit()
-            
+
     def can_execute(self) -> bool:
         """Check if execution is allowed."""
         current_time = time.time()
-        
+
         if self._state == CircuitState.CLOSED:
             return True
         elif self._state == CircuitState.OPEN:
             # Check if enough time has passed to try half-open
-            if (self._last_failure_time and 
+            if (self._last_failure_time and
                 current_time - self._last_failure_time >= self.recovery_timeout):
                 self._half_open_circuit()
                 return True
             return False
         elif self._state == CircuitState.HALF_OPEN:
             return True
-            
+
         return False
-        
+
     def _open_circuit(self) -> None:
         """Open the circuit."""
         logger.warning("Circuit breaker opened", circuit=self.name)
         self._state = CircuitState.OPEN
         self._success_count = 0
-        
+
     def _close_circuit(self) -> None:
         """Close the circuit."""
         logger.info("Circuit breaker closed", circuit=self.name)
         self._state = CircuitState.CLOSED
         self._failure_count = 0
         self._success_count = 0
-        
+
     def _half_open_circuit(self) -> None:
         """Move circuit to half-open state."""
         logger.info("Circuit breaker half-open", circuit=self.name)
@@ -190,22 +191,22 @@ class CircuitBreaker:
 
 class RetryManager:
     """Manages retry logic with exponential backoff and jitter."""
-    
+
     def __init__(self, config: RecoveryConfig):
         self.config = config
-        
+
     async def retry_async(
         self,
         operation: Callable[..., Any],
         operation_name: str,
-        error_categories: List[ErrorCategory] = None,
+        error_categories: list[ErrorCategory] = None,
         *args,
         **kwargs,
     ) -> Any:
         """Retry an async operation with exponential backoff."""
         error_categories = error_categories or [ErrorCategory.NETWORK, ErrorCategory.TIMEOUT]
         last_error = None
-        
+
         for attempt in range(self.config.max_retries + 1):
             try:
                 if attempt > 0:
@@ -217,22 +218,22 @@ class RetryManager:
                         delay=delay,
                     )
                     await asyncio.sleep(delay)
-                    
+
                 result = await operation(*args, **kwargs)
-                
+
                 if attempt > 0:
                     logger.info(
                         "Operation succeeded after retry",
                         operation=operation_name,
                         attempt=attempt,
                     )
-                    
+
                 return result
-                
+
             except Exception as e:
                 last_error = e
                 error_category = self._categorize_error(e)
-                
+
                 logger.warning(
                     "Operation failed",
                     operation=operation_name,
@@ -240,38 +241,38 @@ class RetryManager:
                     error=str(e),
                     error_category=error_category.value,
                 )
-                
+
                 # Check if this error should be retried
                 if error_category not in error_categories or attempt >= self.config.max_retries:
                     break
-                    
+
         logger.error(
             "Operation failed after all retries",
             operation=operation_name,
             max_retries=self.config.max_retries,
             final_error=str(last_error),
         )
-        
+
         raise last_error
-        
+
     def _calculate_delay(self, attempt: int) -> float:
         """Calculate delay for exponential backoff with jitter."""
         delay = min(
             self.config.base_delay * (self.config.backoff_factor ** (attempt - 1)),
             self.config.max_delay,
         )
-        
+
         if self.config.jitter:
             import random
             delay *= (0.5 + random.random() * 0.5)  # Add jitter: 50-100% of calculated delay
-            
+
         return delay
-        
+
     def _categorize_error(self, error: Exception) -> ErrorCategory:
         """Categorize an error for recovery decisions."""
         error_type = type(error).__name__.lower()
         error_message = str(error).lower()
-        
+
         if "timeout" in error_type or "timeout" in error_message:
             return ErrorCategory.TIMEOUT
         elif any(net_error in error_type for net_error in ["connection", "network", "socket"]):
@@ -290,15 +291,15 @@ class RetryManager:
 
 class FallbackManager:
     """Manages fallback operations when primary operations fail."""
-    
+
     def __init__(self):
-        self._fallback_handlers: Dict[str, Callable] = {}
-        
+        self._fallback_handlers: dict[str, Callable] = {}
+
     def register_fallback(self, operation_name: str, fallback_handler: Callable) -> None:
         """Register a fallback handler for an operation."""
         self._fallback_handlers[operation_name] = fallback_handler
         logger.info("Registered fallback handler", operation=operation_name)
-        
+
     async def execute_fallback(
         self, operation_name: str, original_error: Exception, *args, **kwargs
     ) -> Any:
@@ -306,15 +307,15 @@ class FallbackManager:
         if operation_name not in self._fallback_handlers:
             logger.warning("No fallback handler available", operation=operation_name)
             raise original_error
-            
+
         fallback_handler = self._fallback_handlers[operation_name]
-        
+
         try:
             logger.info("Executing fallback", operation=operation_name)
             result = await fallback_handler(*args, **kwargs)
             logger.info("Fallback succeeded", operation=operation_name)
             return result
-            
+
         except Exception as fallback_error:
             logger.error(
                 "Fallback failed",
@@ -327,14 +328,14 @@ class FallbackManager:
 
 class AdvancedErrorRecovery:
     """Advanced error recovery system with multiple strategies."""
-    
+
     def __init__(self, config: RecoveryConfig = None):
         self.config = config or RecoveryConfig()
         self.retry_manager = RetryManager(self.config)
         self.fallback_manager = FallbackManager()
-        self._circuit_breakers: Dict[str, CircuitBreaker] = {}
-        self._recovery_history: List[RecoveryAttempt] = []
-        
+        self._circuit_breakers: dict[str, CircuitBreaker] = {}
+        self._recovery_history: list[RecoveryAttempt] = []
+
     def get_circuit_breaker(self, name: str) -> CircuitBreaker:
         """Get or create a circuit breaker."""
         if name not in self._circuit_breakers:
@@ -344,40 +345,40 @@ class AdvancedErrorRecovery:
                 recovery_timeout=self.config.circuit_breaker_timeout,
             )
         return self._circuit_breakers[name]
-        
+
     @asynccontextmanager
     async def protected_operation(
         self,
         operation_name: str,
-        circuit_breaker_name: Optional[str] = None,
-        fallback_name: Optional[str] = None,
+        circuit_breaker_name: str | None = None,
+        fallback_name: str | None = None,
     ):
         """Context manager for protected operations with error recovery."""
         circuit_breaker = None
         if circuit_breaker_name:
             circuit_breaker = self.get_circuit_breaker(circuit_breaker_name)
-            
+
             if not circuit_breaker.can_execute():
                 logger.warning(
                     "Circuit breaker is open, failing fast",
                     circuit=circuit_breaker_name,
                 )
                 raise Exception(f"Circuit breaker {circuit_breaker_name} is open")
-                
+
         start_time = time.time()
         success = False
-        
+
         try:
             yield
             success = True
-            
+
             if circuit_breaker:
                 circuit_breaker.record_success()
-                
+
         except Exception as e:
             if circuit_breaker:
                 circuit_breaker.record_failure()
-                
+
             # Try fallback if available
             if fallback_name and self.config.enable_fallback:
                 try:
@@ -385,10 +386,10 @@ class AdvancedErrorRecovery:
                     success = True
                 except Exception:
                     pass  # Fallback failed, continue with original exception
-                    
+
             if not success:
                 raise
-                
+
         finally:
             duration = time.time() - start_time
             self._record_recovery_attempt(
@@ -401,14 +402,14 @@ class AdvancedErrorRecovery:
                     "fallback": fallback_name,
                 },
             )
-            
+
     async def execute_with_recovery(
         self,
         operation: Callable[..., Any],
         operation_name: str,
-        strategies: List[RecoveryStrategy] = None,
-        circuit_breaker_name: Optional[str] = None,
-        fallback_name: Optional[str] = None,
+        strategies: list[RecoveryStrategy] = None,
+        circuit_breaker_name: str | None = None,
+        fallback_name: str | None = None,
         *args,
         **kwargs,
     ) -> Any:
@@ -418,9 +419,9 @@ class AdvancedErrorRecovery:
             RecoveryStrategy.CIRCUIT_BREAKER,
             RecoveryStrategy.FALLBACK,
         ]
-        
+
         last_error = None
-        
+
         # Try circuit breaker protection
         if RecoveryStrategy.CIRCUIT_BREAKER in strategies and circuit_breaker_name:
             async with self.protected_operation(operation_name, circuit_breaker_name, fallback_name):
@@ -430,7 +431,7 @@ class AdvancedErrorRecovery:
                     )
                 else:
                     return await operation(*args, **kwargs)
-        
+
         # Try retry strategy
         if RecoveryStrategy.RETRY in strategies:
             try:
@@ -439,7 +440,7 @@ class AdvancedErrorRecovery:
                 )
             except Exception as e:
                 last_error = e
-                
+
         # Try fallback strategy
         if RecoveryStrategy.FALLBACK in strategies and fallback_name:
             try:
@@ -448,20 +449,20 @@ class AdvancedErrorRecovery:
                 )
             except Exception as e:
                 last_error = e
-                
+
         # If all strategies failed, raise the last error
         if last_error:
             raise last_error
         else:
             # This shouldn't happen, but just in case
             raise Exception(f"All recovery strategies failed for operation {operation_name}")
-            
+
     def _record_recovery_attempt(
         self,
         strategy: RecoveryStrategy,
         success: bool,
         duration: float,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> None:
         """Record a recovery attempt for analysis."""
         attempt = RecoveryAttempt(
@@ -471,21 +472,21 @@ class AdvancedErrorRecovery:
             duration=duration,
             metadata=metadata,
         )
-        
+
         self._recovery_history.append(attempt)
-        
+
         # Keep only recent attempts (last 1000)
         if len(self._recovery_history) > 1000:
             self._recovery_history = self._recovery_history[-1000:]
-            
-    def get_recovery_stats(self) -> Dict[str, Any]:
+
+    def get_recovery_stats(self) -> dict[str, Any]:
         """Get recovery statistics."""
         if not self._recovery_history:
             return {"total_attempts": 0}
-            
+
         total_attempts = len(self._recovery_history)
         successful_attempts = sum(1 for attempt in self._recovery_history if attempt.success)
-        
+
         strategy_stats = {}
         for strategy in RecoveryStrategy:
             strategy_attempts = [a for a in self._recovery_history if a.strategy == strategy]
@@ -496,7 +497,7 @@ class AdvancedErrorRecovery:
                     "success_rate": sum(1 for a in strategy_attempts if a.success) / len(strategy_attempts),
                     "avg_duration": sum(a.duration for a in strategy_attempts) / len(strategy_attempts),
                 }
-                
+
         circuit_breaker_stats = {}
         for name, cb in self._circuit_breakers.items():
             circuit_breaker_stats[name] = {
@@ -504,7 +505,7 @@ class AdvancedErrorRecovery:
                 "failure_count": cb._failure_count,
                 "success_count": cb._success_count,
             }
-            
+
         return {
             "total_attempts": total_attempts,
             "successful_attempts": successful_attempts,
@@ -526,7 +527,7 @@ class AdvancedErrorRecovery:
 # Utility decorators
 def with_circuit_breaker(circuit_name: str, recovery_system: AdvancedErrorRecovery):
     """Decorator to add circuit breaker protection to a function."""
-    
+
     def decorator(func: Callable) -> Callable:
         async def wrapper(*args, **kwargs):
             async with recovery_system.protected_operation(
@@ -534,19 +535,19 @@ def with_circuit_breaker(circuit_name: str, recovery_system: AdvancedErrorRecove
                 circuit_breaker_name=circuit_name,
             ):
                 return await func(*args, **kwargs)
-                
+
         return wrapper
-        
+
     return decorator
 
 
 def with_retry(
     max_retries: int = 3,
     base_delay: float = 1.0,
-    error_categories: List[ErrorCategory] = None,
+    error_categories: list[ErrorCategory] = None,
 ):
     """Decorator to add retry logic to a function."""
-    
+
     def decorator(func: Callable) -> Callable:
         async def wrapper(*args, **kwargs):
             config = RecoveryConfig(
@@ -554,7 +555,7 @@ def with_retry(
                 base_delay=base_delay,
             )
             retry_manager = RetryManager(config)
-            
+
             return await retry_manager.retry_async(
                 func,
                 func.__name__,
@@ -562,9 +563,9 @@ def with_retry(
                 *args,
                 **kwargs,
             )
-            
+
         return wrapper
-        
+
     return decorator
 
 

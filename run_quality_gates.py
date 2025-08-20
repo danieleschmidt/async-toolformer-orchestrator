@@ -69,7 +69,7 @@ class QualityGateValidator:
         """Test Generation 1: Basic functionality works."""
         
         # Create orchestrator
-        config = OrchestratorConfig(max_parallel_tools=3)
+        config = OrchestratorConfig(max_parallel_tools=3, max_parallel_per_type=2)
         orchestrator = AsyncOrchestrator(config=config)
         
         # Define test tool
@@ -158,7 +158,7 @@ class QualityGateValidator:
     async def test_integrated_functionality(self) -> bool:
         """Test integrated functionality across all generations."""
         
-        config = OrchestratorConfig(max_parallel_tools=2)
+        config = OrchestratorConfig(max_parallel_tools=2, max_parallel_per_type=2)
         orchestrator = AsyncOrchestrator(config=config)
         
         @Tool("Integration test tool")
@@ -195,7 +195,7 @@ class QualityGateValidator:
     async def test_error_handling_robustness(self) -> bool:
         """Test comprehensive error handling."""
         
-        config = OrchestratorConfig(max_parallel_tools=2)
+        config = OrchestratorConfig(max_parallel_tools=2, max_parallel_per_type=2)
         orchestrator = AsyncOrchestrator(config=config)
         
         @Tool("Failing test tool")
@@ -225,7 +225,7 @@ class QualityGateValidator:
         
         import time
         
-        config = OrchestratorConfig(max_parallel_tools=5)
+        config = OrchestratorConfig(max_parallel_tools=5, max_parallel_per_type=3)
         orchestrator = AsyncOrchestrator(config=config)
         
         @Tool("Performance test tool")

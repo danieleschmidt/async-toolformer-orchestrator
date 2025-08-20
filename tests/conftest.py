@@ -5,12 +5,11 @@ import json
 import logging
 import os
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import pytest_asyncio
 from _pytest.logging import LogCaptureFixture
 
 # Configure test logging
@@ -43,7 +42,7 @@ def log_capture(caplog: LogCaptureFixture) -> LogCaptureFixture:
 def mock_openai_client() -> AsyncMock:
     """Mock OpenAI client for testing."""
     client = AsyncMock()
-    
+
     # Mock chat completions response
     mock_response = MagicMock()
     mock_response.choices = [
@@ -61,7 +60,7 @@ def mock_openai_client() -> AsyncMock:
             )
         )
     ]
-    
+
     client.chat.completions.create.return_value = mock_response
     return client
 
@@ -70,7 +69,7 @@ def mock_openai_client() -> AsyncMock:
 def mock_anthropic_client() -> AsyncMock:
     """Mock Anthropic client for testing."""
     client = AsyncMock()
-    
+
     # Mock message response
     mock_response = MagicMock()
     mock_response.content = [
@@ -81,7 +80,7 @@ def mock_anthropic_client() -> AsyncMock:
             input={"arg1": "value1"}
         )
     ]
-    
+
     client.messages.create.return_value = mock_response
     return client
 
@@ -96,7 +95,7 @@ def mock_llm_client(mock_openai_client) -> AsyncMock:
 def mock_redis() -> AsyncMock:
     """Mock Redis client for testing."""
     redis = AsyncMock()
-    
+
     # Mock rate limiting methods
     redis.get.return_value = None
     redis.set.return_value = True
@@ -104,41 +103,41 @@ def mock_redis() -> AsyncMock:
     redis.incr.return_value = 1
     redis.pipeline.return_value = redis
     redis.execute.return_value = [True, True, 1]
-    
+
     return redis
 
 
 @pytest.fixture
-async def sample_tools() -> List[MagicMock]:
+async def sample_tools() -> list[MagicMock]:
     """Create sample tools for testing."""
     tools = []
-    
+
     # Fast tool
     fast_tool = AsyncMock()
     fast_tool.__name__ = "fast_tool"
     fast_tool.return_value = "fast_result"
     fast_tool.description = "A fast test tool"
     tools.append(fast_tool)
-    
+
     # Slow tool
     slow_tool = AsyncMock()
     slow_tool.__name__ = "slow_tool"
     slow_tool.side_effect = lambda: asyncio.sleep(0.1) or "slow_result"
     slow_tool.description = "A slow test tool"
     tools.append(slow_tool)
-    
+
     # Error tool
     error_tool = AsyncMock()
     error_tool.__name__ = "error_tool"
     error_tool.side_effect = Exception("Test error")
     error_tool.description = "A tool that raises errors"
     tools.append(error_tool)
-    
+
     return tools
 
 
 @pytest.fixture
-def orchestrator_config() -> Dict:
+def orchestrator_config() -> dict:
     """Default orchestrator configuration for testing."""
     return {
         "max_parallel_tools": 5,
@@ -154,32 +153,32 @@ def orchestrator_config() -> Dict:
 async def mock_orchestrator(
     mock_openai_client: AsyncMock,
     mock_redis: AsyncMock,
-    sample_tools: List[MagicMock],
-    orchestrator_config: Dict
+    sample_tools: list[MagicMock],
+    orchestrator_config: dict
 ) -> AsyncMock:
     """Create a mock orchestrator for testing."""
     from async_toolformer import AsyncOrchestrator
-    
+
     orchestrator = AsyncMock(spec=AsyncOrchestrator)
     orchestrator.llm_client = mock_openai_client
     orchestrator.redis_client = mock_redis
     orchestrator.tools = sample_tools
     orchestrator.config = orchestrator_config
-    
+
     # Mock execution methods
     orchestrator.execute.return_value = {
         "results": ["fast_result", "slow_result"],
         "execution_time": 0.15,
         "parallel_count": 2
     }
-    
+
     orchestrator.stream_execute.return_value = AsyncMock()
-    
+
     return orchestrator
 
 
 @pytest.fixture
-def sample_api_responses() -> Dict:
+def sample_api_responses() -> dict:
     """Sample API responses for testing."""
     return {
         "openai_chat_completion": {
@@ -236,7 +235,7 @@ def sample_api_responses() -> Dict:
 
 
 @pytest.fixture
-def performance_metrics() -> Dict:
+def performance_metrics() -> dict:
     """Expected performance metrics for testing."""
     return {
         "tool_execution_rate": 10.5,
@@ -256,7 +255,7 @@ def test_environment() -> str:
 
 
 @pytest.fixture
-def api_keys() -> Dict[str, Optional[str]]:
+def api_keys() -> dict[str, str | None]:
     """API keys for E2E testing (if available)."""
     return {
         "openai": os.getenv("OPENAI_API_KEY"),
@@ -265,7 +264,7 @@ def api_keys() -> Dict[str, Optional[str]]:
 
 
 @pytest.fixture
-def skip_if_no_api_keys(api_keys: Dict[str, Optional[str]]):
+def skip_if_no_api_keys(api_keys: dict[str, str | None]):
     """Skip test if API keys are not available."""
     if not any(api_keys.values()):
         pytest.skip("API keys not available for E2E testing")
@@ -280,7 +279,7 @@ async def cleanup_redis(mock_redis: AsyncMock):
 
 
 @pytest.fixture
-def benchmark_config() -> Dict:
+def benchmark_config() -> dict:
     """Configuration for benchmark tests."""
     return {
         "iterations": 10,
@@ -334,12 +333,12 @@ def pytest_collection_modifyitems(config, items):
         elif "e2e" in str(item.fspath):
             item.add_marker(pytest.mark.e2e)
             item.add_marker(pytest.mark.slow)
-        
+
         # Add performance marker for benchmark tests
         if "benchmark" in item.name or "perf" in item.name:
             item.add_marker(pytest.mark.benchmark)
             item.add_marker(pytest.mark.performance)
-        
+
         # Add security marker for security tests
         if "security" in item.name or "auth" in item.name:
             item.add_marker(pytest.mark.security)
@@ -349,7 +348,7 @@ def pytest_collection_modifyitems(config, items):
 def setup_test_logging(caplog: LogCaptureFixture):
     """Automatically set up logging for all tests."""
     caplog.set_level(logging.DEBUG, logger="async_toolformer")
-    
+
     # Suppress noisy third-party loggers
     logging.getLogger("openai").setLevel(logging.WARNING)
     logging.getLogger("anthropic").setLevel(logging.WARNING)
@@ -359,13 +358,13 @@ def setup_test_logging(caplog: LogCaptureFixture):
 
 class TestDataFactory:
     """Factory for creating test data."""
-    
+
     @staticmethod
     def create_tool_call(
         name: str = "test_tool",
-        arguments: Dict = None,
+        arguments: dict = None,
         call_id: str = "call_123"
-    ) -> Dict:
+    ) -> dict:
         """Create a mock tool call."""
         return {
             "id": call_id,
@@ -375,14 +374,14 @@ class TestDataFactory:
                 "arguments": json.dumps(arguments or {"arg": "value"})
             }
         }
-    
+
     @staticmethod
     def create_tool_result(
         call_id: str = "call_123",
         result: str = "test_result",
         execution_time: float = 0.1,
         success: bool = True
-    ) -> Dict:
+    ) -> dict:
         """Create a mock tool result."""
         return {
             "call_id": call_id,

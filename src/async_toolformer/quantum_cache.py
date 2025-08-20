@@ -168,9 +168,9 @@ class QuantumCache:
             bytes_freed += size
             self._eviction_count += 1
             
-            logger.debug(f"Evicted {key} (score: {score:.2f}, size: {size} bytes)\")
+            logger.debug(f"Evicted {key} (score: {score:.2f}, size: {size} bytes)")
         
-        logger.info(f"Intelligent eviction freed {bytes_freed} bytes by removing {self._eviction_count} entries\")
+        logger.info(f"Intelligent eviction freed {bytes_freed} bytes by removing {self._eviction_count} entries")
     
     async def _remove_entry(self, key: str):
         ""\"Remove an entry from cache.""\"

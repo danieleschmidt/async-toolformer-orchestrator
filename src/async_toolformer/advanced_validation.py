@@ -300,13 +300,10 @@ class AdvancedValidator:
         sanitized_data = data
 
         try:
-            # Apply sanitizers first
-            sanitized_data = await self._apply_sanitizers(sanitized_data)
-
-            # Run global validators
+            # Run global validators on ORIGINAL data first to detect threats
             for validator in self.global_validators:
                 try:
-                    validator_issues = await validator(sanitized_data, context)
+                    validator_issues = await validator(data, context)
                     issues.extend(validator_issues)
                 except Exception as e:
                     logger.warning(f"Validator failed: {e}")
@@ -316,6 +313,9 @@ class AdvancedValidator:
                         message=f"Validation process failed: {str(e)}",
                         field_path=context
                     ))
+
+            # Apply sanitizers after validation
+            sanitized_data = await self._apply_sanitizers(data)
 
             # Run field-specific validators
             field_issues = await self._run_field_validators(sanitized_data, context)
