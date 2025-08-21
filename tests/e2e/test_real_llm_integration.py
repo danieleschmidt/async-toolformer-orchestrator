@@ -1,7 +1,8 @@
 """End-to-end tests with real LLM APIs."""
 
-import pytest
 import os
+
+import pytest
 from openai import AsyncOpenAI
 
 from async_toolformer import AsyncOrchestrator, Tool

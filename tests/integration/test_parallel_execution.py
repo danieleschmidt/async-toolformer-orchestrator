@@ -1,9 +1,9 @@
 """Integration tests for parallel tool execution."""
 
-import pytest
 import asyncio
 import time
-from unittest.mock import AsyncMock
+
+import pytest
 
 from async_toolformer import AsyncOrchestrator, Tool
 
@@ -81,7 +81,7 @@ class TestParallelExecution:
         # Check that no more than 3 tasks were running simultaneously
         concurrent_count = 0
         max_concurrent = 0
-        
+
         for event in execution_tracker:
             if event.startswith("start_"):
                 concurrent_count += 1

@@ -473,34 +473,34 @@ class AutoScaler:
             cpu_trend = response_trend = 0
         
         return {
-            \"current_state\": {
-                \"worker_count\": len(self._workers),
-                \"min_workers\": self.min_workers,
-                \"max_workers\": self.max_workers,
-                \"auto_scaling_enabled\": self._auto_scaling_enabled,
-                \"load_balancing_strategy\": self._load_balancing_strategy.value
+            "current_state": {
+                "worker_count": len(self._workers),
+                "min_workers": self.min_workers,
+                "max_workers": self.max_workers,
+                "auto_scaling_enabled": self._auto_scaling_enabled,
+                "load_balancing_strategy": self._load_balancing_strategy.value
             },
-            \"load_metrics\": load_metrics,
-            \"performance_trends\": {
-                \"cpu_trend_percent\": cpu_trend,
-                \"response_time_trend_ms\": response_trend,
-                \"scaling_events_last_hour\": len(recent_events)
+            "load_metrics": load_metrics,
+            "performance_trends": {
+                "cpu_trend_percent": cpu_trend,
+                "response_time_trend_ms": response_trend,
+                "scaling_events_last_hour": len(recent_events)
             },
-            \"scaling_history\": [
+            "scaling_history": [
                 {
-                    \"timestamp\": event.timestamp,
-                    \"direction\": event.direction.value,
-                    \"from_workers\": event.from_workers,
-                    \"to_workers\": event.to_workers,
-                    \"reason\": event.reason
+                    "timestamp": event.timestamp,
+                    "direction": event.direction.value,
+                    "from_workers": event.from_workers,
+                    "to_workers": event.to_workers,
+                    "reason": event.reason
                 }
                 for event in recent_events
             ],
-            \"optimization_features\": {
-                \"predictive_load_balancing\": True,
-                \"intelligent_scaling_decisions\": True,
-                \"multi_factor_worker_selection\": True,
-                \"adaptive_thresholds\": False  # Could be implemented
+            "optimization_features": {
+                "predictive_load_balancing": True,
+                "intelligent_scaling_decisions": True,
+                "multi_factor_worker_selection": True,
+                "adaptive_thresholds": False  # Could be implemented
             }
         }
 

@@ -1,11 +1,13 @@
 """Unit tests for Tool and ToolChain decorators."""
 
-import pytest
 import asyncio
+
+import pytest
+
 from async_toolformer import Tool, ToolChain
 
 
-@pytest.mark.unit  
+@pytest.mark.unit
 class TestTool:
     """Test cases for Tool decorator."""
 
@@ -14,7 +16,7 @@ class TestTool:
         @Tool(description="Test tool")
         async def test_func(x: int) -> int:
             return x * 2
-            
+
         assert hasattr(test_func, '_tool_description')
         assert test_func._tool_description == "Test tool"
         assert hasattr(test_func, '_tool_schema')
@@ -24,7 +26,7 @@ class TestTool:
         @Tool(description="Multiply by factor")
         async def multiply(value: int, factor: int = 2) -> int:
             return value * factor
-            
+
         schema = multiply._tool_schema
         assert 'value' in schema['parameters']['properties']
         assert 'factor' in schema['parameters']['properties']
@@ -36,7 +38,7 @@ class TestTool:
         @Tool(description="Add numbers")
         async def add(a: int, b: int) -> int:
             return a + b
-            
+
         result = await add(2, 3)
         assert result == 5
 
@@ -46,7 +48,7 @@ class TestTool:
         async def test_func() -> str:
             """Original docstring."""
             return "test"
-            
+
         assert test_func.__doc__ == "Original docstring."
         assert test_func._tool_timeout_ms == 5000
 
@@ -60,7 +62,7 @@ class TestToolChain:
         @ToolChain
         async def test_chain():
             return "chain result"
-            
+
         assert hasattr(test_chain, '_is_tool_chain')
         assert test_chain._is_tool_chain is True
 
@@ -74,6 +76,6 @@ class TestToolChain:
             await asyncio.sleep(0.01)
             step2 = step1.replace(" ", "_")
             return step2
-            
+
         result = await process_data("hello world")
         assert result == "HELLO_WORLD"
