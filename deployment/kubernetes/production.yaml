@@ -1,0 +1,402 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: async-toolformer
+  labels:
+    name: async-toolformer
+    environment: production
+    compliance: gdpr-ccpa-pdpa
+---
+# ConfigMap for global configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orchestrator-config
+  namespace: async-toolformer
+data:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  METRICS_ENABLED: "true"
+  GDPR_COMPLIANCE: "true"
+  CCPA_COMPLIANCE: "true"
+  PDPA_COMPLIANCE: "true"
+  QUANTUM_FEATURES_ENABLED: "true"
+  AUTO_SCALING_ENABLED: "true"
+  INTELLIGENT_CACHING_ENABLED: "true"
+  ADVANCED_MONITORING_ENABLED: "true"
+---
+# Secret for sensitive configuration
+apiVersion: v1
+kind: Secret
+metadata:
+  name: orchestrator-secrets
+  namespace: async-toolformer
+type: Opaque
+data:
+  # Base64 encoded values - replace with actual secrets in production
+  database-url: cG9zdGdyZXNxbDovL29yY2hlc3RyYXRvcjpwYXNzd29yZEBkYi5hc3luYy10b29sZm9ybWVyLmNvbTo1NDMyL29yY2hlc3RyYXRvcg==
+  redis-url: cmVkaXM6Ly9yZWRpcy5hc3luYy10b29sZm9ybWVyLmNvbTo2Mzc5
+  openai-api-key: c2stcHJvamVjdC1rZXktZ28taGVyZQ==
+  anthropic-api-key: c2stcHJvamVjdC1rZXktZ28taGVyZQ==
+---
+# Primary Deployment for US Region
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator-us-east
+  namespace: async-toolformer
+  labels:
+    app: orchestrator
+    region: us-east-1
+    tier: api
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: orchestrator
+      region: us-east-1
+  template:
+    metadata:
+      labels:
+        app: orchestrator
+        region: us-east-1
+        tier: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: orchestrator-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: orchestrator
+        image: terragon/async-toolformer:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        - containerPort: 8001
+          name: metrics
+          protocol: TCP
+        env:
+        - name: REGION
+          value: "us-east-1"
+        - name: PRIMARY_REGION
+          value: "true"
+        - name: I18N_DEFAULT_LOCALE
+          value: "en_US"
+        envFrom:
+        - configMapRef:
+            name: orchestrator-config
+        - secretRef:
+            name: orchestrator-secrets
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /startup
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+          readOnly: true
+        - name: logs-volume
+          mountPath: /app/logs
+      volumes:
+      - name: config-volume
+        configMap:
+          name: orchestrator-config
+      - name: logs-volume
+        emptyDir: {}
+---
+# Service for orchestrator
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator-service
+  namespace: async-toolformer
+  labels:
+    app: orchestrator
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
+spec:
+  type: LoadBalancer
+  selector:
+    app: orchestrator
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8000
+    protocol: TCP
+  - name: metrics
+    port: 8001
+    targetPort: 8001
+    protocol: TCP
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: orchestrator-hpa
+  namespace: async-toolformer
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: orchestrator-us-east
+  minReplicas: 3
+  maxReplicas: 50
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Pods
+    pods:
+      metric:
+        name: requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "100"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+---
+# Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: orchestrator-pdb
+  namespace: async-toolformer
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: orchestrator
+---
+# Network Policy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: orchestrator-network-policy
+  namespace: async-toolformer
+spec:
+  podSelector:
+    matchLabels:
+      app: orchestrator
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: istio-system
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 8001
+  egress:
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 6379
+---
+# ServiceAccount for RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orchestrator-service-account
+  namespace: async-toolformer
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/AsyncToolformerRole
+---
+# ClusterRole for necessary permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: orchestrator-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: orchestrator-cluster-role-binding
+subjects:
+- kind: ServiceAccount
+  name: orchestrator-service-account
+  namespace: async-toolformer
+roleRef:
+  kind: ClusterRole
+  name: orchestrator-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: orchestrator-ingress
+  namespace: async-toolformer
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET,POST,PUT,DELETE,OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+spec:
+  tls:
+  - hosts:
+    - api.async-toolformer.com
+    - api-us.async-toolformer.com
+    secretName: orchestrator-tls
+  rules:
+  - host: api.async-toolformer.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: orchestrator-service
+            port:
+              number: 80
+  - host: api-us.async-toolformer.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: orchestrator-service
+            port:
+              number: 80
+---
+# Monitoring ServiceMonitor for Prometheus
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: orchestrator-metrics
+  namespace: async-toolformer
+  labels:
+    app: orchestrator
+spec:
+  selector:
+    matchLabels:
+      app: orchestrator
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+---
+# AlertManager rules
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: orchestrator-alerts
+  namespace: async-toolformer
+spec:
+  groups:
+  - name: orchestrator.rules
+    rules:
+    - alert: OrchestratorHighErrorRate
+      expr: rate(orchestrator_errors_total[5m]) > 0.1
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High error rate detected"
+        description: "Error rate is {{ $value }} errors per second"
+    
+    - alert: OrchestratorHighLatency
+      expr: histogram_quantile(0.95, rate(orchestrator_request_duration_seconds_bucket[5m])) > 1.0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High latency detected"
+        description: "95th percentile latency is {{ $value }} seconds"
+    
+    - alert: OrchestratorPodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total{namespace="async-toolformer"}[5m]) > 0.1
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Pod is crash looping"
+        description: "Pod {{ $labels.pod }} is restarting frequently"

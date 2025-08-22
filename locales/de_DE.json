@@ -1,0 +1,81 @@
+{
+  "orchestrator": {
+    "messages": {
+      "initialization": "AsyncOrchestrator erfolgreich initialisiert",
+      "execution_start": "Orchestrator-Ausführung wird gestartet",
+      "execution_complete": "Orchestrator-Ausführung abgeschlossen",
+      "tool_selected": "LLM hat Tools für die Ausführung ausgewählt",
+      "tool_execution_start": "Tool wird ausgeführt: {tool_name}",
+      "tool_execution_complete": "Tool-Ausführung abgeschlossen: {tool_name}",
+      "error_occurred": "Ein Fehler ist während der Ausführung aufgetreten",
+      "timeout_exceeded": "Tool-Ausführungs-Timeout überschritten",
+      "rate_limit_hit": "Rate-Limit erreicht, Backoff wird angewendet",
+      "cache_hit": "Cache-Treffer für Schlüssel: {key}",
+      "cache_miss": "Cache-Fehler für Schlüssel: {key}",
+      "scaling_up": "Ressourcen werden aufgrund hoher Last hochskaliert",
+      "scaling_down": "Ressourcen werden aufgrund niedriger Last herunterskaliert"
+    },
+    "errors": {
+      "tool_not_found": "Tool '{tool_name}' nicht in der Registry gefunden",
+      "invalid_configuration": "Ungültige Orchestrator-Konfiguration",
+      "llm_provider_error": "LLM-Provider-Fehler: {error}",
+      "tool_execution_failed": "Tool-Ausführung fehlgeschlagen: {error}",
+      "validation_failed": "Eingabevalidierung fehlgeschlagen: {reason}",
+      "security_violation": "Sicherheitsvalidierung fehlgeschlagen: {violation}",
+      "resource_exhausted": "Systemressourcen erschöpft",
+      "compliance_violation": "Compliance-Richtlinienverstoß: {policy}"
+    },
+    "status": {
+      "healthy": "System ist gesund und betriebsbereit",
+      "degraded": "System zeigt verminderte Leistung",
+      "unhealthy": "System ist ungesund und möglicherweise nicht verfügbar",
+      "maintenance": "System befindet sich in Wartung"
+    }
+  },
+  "compliance": {
+    "gdpr": {
+      "data_processed": "Personenbezogene Daten gemäß DSGVO verarbeitet",
+      "consent_required": "Benutzereinwilligung für Datenverarbeitung erforderlich",
+      "right_to_erasure": "Datenlöschung gemäß Recht auf Vergessenwerden angefordert",
+      "data_portability": "Datenexport gemäß Datenübertragbarkeit angefordert",
+      "breach_notification": "Datenschutzverletzung erkannt und Behörden benachrichtigt"
+    },
+    "ccpa": {
+      "data_sale_opt_out": "Verbraucher hat Verkauf personenbezogener Daten abgelehnt",
+      "data_deletion": "Verbraucher hat Löschung personenbezogener Daten angefordert",
+      "data_disclosure": "Kategorien der gesammelten personenbezogenen Daten offengelegt"
+    },
+    "pdpa": {
+      "consent_withdrawn": "Betroffene Person hat Einwilligung zur Verarbeitung widerrufen",
+      "purpose_limitation": "Datenverarbeitung auf angegebene Zwecke beschränkt",
+      "data_minimization": "Datensammlung auf notwendige Zwecke minimiert"
+    }
+  },
+  "monitoring": {
+    "metrics": {
+      "requests_per_second": "Anfragen pro Sekunde",
+      "response_time": "Durchschnittliche Antwortzeit",
+      "error_rate": "Fehlerrate in Prozent",
+      "cache_hit_ratio": "Cache-Trefferquote",
+      "cpu_utilization": "CPU-Auslastung in Prozent",
+      "memory_usage": "Speicherverbrauch in Prozent",
+      "active_connections": "Anzahl aktiver Verbindungen"
+    },
+    "alerts": {
+      "high_error_rate": "Hohe Fehlerrate erkannt: {rate}%",
+      "slow_response_time": "Langsame Antwortzeit erkannt: {time}ms",
+      "resource_threshold": "Ressourcenauslastung über Schwellenwert: {resource}",
+      "security_incident": "Sicherheitsvorfall erkannt: {type}"
+    }
+  },
+  "quantum": {
+    "features": {
+      "coherence_maintained": "Quantenkohärenz über Ausführung aufrechterhalten",
+      "entanglement_established": "Quantenverschränkung zwischen Tools hergestellt",
+      "superposition_collapsed": "Quantensuperposition zu Lösung kollabiert",
+      "optimization_complete": "Quantenoptimierungszyklus abgeschlossen",
+      "prediction_updated": "Quantenvorhersagemodell aktualisiert",
+      "scaling_prediction": "Quantenskalierungsvorhersage: {direction}"
+    }
+  }
+}
