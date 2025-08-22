@@ -1,0 +1,81 @@
+{
+  "orchestrator": {
+    "messages": {
+      "initialization": "AsyncOrchestratorが正常に初期化されました",
+      "execution_start": "オーケストレーターの実行を開始します",
+      "execution_complete": "オーケストレーターの実行が完了しました",
+      "tool_selected": "LLMが実行用ツールを選択しました",
+      "tool_execution_start": "ツールを実行中: {tool_name}",
+      "tool_execution_complete": "ツール実行完了: {tool_name}",
+      "error_occurred": "実行中にエラーが発生しました",
+      "timeout_exceeded": "ツール実行のタイムアウトが発生しました",
+      "rate_limit_hit": "レート制限に達したため、バックオフを適用します",
+      "cache_hit": "キーのキャッシュヒット: {key}",
+      "cache_miss": "キーのキャッシュミス: {key}",
+      "scaling_up": "高負荷によりリソースをスケールアップしています",
+      "scaling_down": "低負荷によりリソースをスケールダウンしています"
+    },
+    "errors": {
+      "tool_not_found": "ツール '{tool_name}' がレジストリに見つかりません",
+      "invalid_configuration": "無効なオーケストレーター設定",
+      "llm_provider_error": "LLMプロバイダーエラー: {error}",
+      "tool_execution_failed": "ツール実行に失敗しました: {error}",
+      "validation_failed": "入力検証に失敗しました: {reason}",
+      "security_violation": "セキュリティ検証に失敗しました: {violation}",
+      "resource_exhausted": "システムリソースが枯渇しました",
+      "compliance_violation": "コンプライアンスポリシー違反: {policy}"
+    },
+    "status": {
+      "healthy": "システムは正常で動作可能です",
+      "degraded": "システムのパフォーマンスが低下しています",
+      "unhealthy": "システムは異常で利用できない可能性があります",
+      "maintenance": "システムはメンテナンス中です"
+    }
+  },
+  "compliance": {
+    "gdpr": {
+      "data_processed": "GDPRに従って個人データが処理されました",
+      "consent_required": "データ処理にはユーザーの同意が必要です",
+      "right_to_erasure": "忘れられる権利によりデータ削除が要求されました",
+      "data_portability": "データポータビリティによりデータエクスポートが要求されました",
+      "breach_notification": "データ侵害が検出され、当局に通知されました"
+    },
+    "ccpa": {
+      "data_sale_opt_out": "消費者が個人データの販売をオプトアウトしました",
+      "data_deletion": "消費者が個人データの削除を要求しました",
+      "data_disclosure": "収集された個人データのカテゴリーを開示しました"
+    },
+    "pdpa": {
+      "consent_withdrawn": "データ主体が処理の同意を撤回しました",
+      "purpose_limitation": "データ処理は指定された目的に制限されています",
+      "data_minimization": "データ収集は必要な目的に最小化されています"
+    }
+  },
+  "monitoring": {
+    "metrics": {
+      "requests_per_second": "1秒あたりのリクエスト数",
+      "response_time": "平均応答時間",
+      "error_rate": "エラー率（パーセント）",
+      "cache_hit_ratio": "キャッシュヒット率",
+      "cpu_utilization": "CPU使用率（パーセント）",
+      "memory_usage": "メモリ使用量（パーセント）",
+      "active_connections": "アクティブ接続数"
+    },
+    "alerts": {
+      "high_error_rate": "高いエラー率が検出されました: {rate}%",
+      "slow_response_time": "遅い応答時間が検出されました: {time}ms",
+      "resource_threshold": "リソース使用率が閾値を超えています: {resource}",
+      "security_incident": "セキュリティインシデントが検出されました: {type}"
+    }
+  },
+  "quantum": {
+    "features": {
+      "coherence_maintained": "実行全体でクォンタムコヒーレンスが維持されました",
+      "entanglement_established": "ツール間でクォンタムもつれが確立されました",
+      "superposition_collapsed": "クォンタム重ね合わせが解に収束しました",
+      "optimization_complete": "クォンタム最適化サイクルが完了しました",
+      "prediction_updated": "クォンタム予測モデルが更新されました",
+      "scaling_prediction": "クォンタムスケーリング予測: {direction}"
+    }
+  }
+}

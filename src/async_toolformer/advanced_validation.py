@@ -109,12 +109,12 @@ class AdvancedValidator:
             'max_nesting_depth': 10,
         }
 
-        # Compliance patterns
+        # Compliance patterns - updated for better detection in text
         self.compliance_patterns = {
-            'email': re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'),
-            'phone': re.compile(r'^\+?1?-?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})$'),
-            'ssn': re.compile(r'^\d{3}-?\d{2}-?\d{4}$'),
-            'credit_card': re.compile(r'^[0-9]{4}[\s-]?[0-9]{4}[\s-]?[0-9]{4}[\s-]?[0-9]{4}$'),
+            'email': re.compile(r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b'),
+            'phone': re.compile(r'\b\+?1?-?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b'),
+            'ssn': re.compile(r'\b\d{3}-?\d{2}-?\d{4}\b'),
+            'credit_card': re.compile(r'\b[0-9]{4}[\s-]?[0-9]{4}[\s-]?[0-9]{4}[\s-]?[0-9]{4}\b'),
         }
 
         self._setup_default_validators()
@@ -355,11 +355,15 @@ class AdvancedValidator:
             # Basic HTML sanitization
             data = html.escape(data)
 
-            # Remove null bytes
-            data = data.replace('\x00', '')
+            # Remove null bytes and replace with space to preserve structure
+            data = data.replace('\x00', ' ')
 
-            # Normalize whitespace
-            data = ' '.join(data.split())
+            # Normalize whitespace only if it contains multiple spaces
+            if '  ' in data:
+                data = ' '.join(data.split())
+
+            # Trim trailing/leading whitespace
+            data = data.strip()
 
         elif isinstance(data, dict):
             sanitized_dict = {}
@@ -402,8 +406,9 @@ class AdvancedValidator:
         if isinstance(data, str):
             # Check for potential command injection
             command_patterns = [
-                r';\s*(rm|del|format|sudo)',
+                r'(;|&&)\s*(rm|del|format|sudo)',
                 r'\|\s*(curl|wget|nc|netcat)',
+                r'\b(rm\s+-rf|del\s+/[sq])',  # Dangerous delete commands
                 r'`[^`]*`',  # Backticks
                 r'\$\([^)]*\)',  # Command substitution
             ]

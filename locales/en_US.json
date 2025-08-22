@@ -1,0 +1,81 @@
+{
+  "orchestrator": {
+    "messages": {
+      "initialization": "AsyncOrchestrator initialized successfully",
+      "execution_start": "Starting orchestrator execution",
+      "execution_complete": "Orchestrator execution completed",
+      "tool_selected": "LLM selected tools for execution",
+      "tool_execution_start": "Executing tool: {tool_name}",
+      "tool_execution_complete": "Tool execution completed: {tool_name}",
+      "error_occurred": "An error occurred during execution",
+      "timeout_exceeded": "Tool execution timeout exceeded",
+      "rate_limit_hit": "Rate limit exceeded, applying backoff",
+      "cache_hit": "Cache hit for key: {key}",
+      "cache_miss": "Cache miss for key: {key}",
+      "scaling_up": "Scaling up resources due to high load",
+      "scaling_down": "Scaling down resources due to low load"
+    },
+    "errors": {
+      "tool_not_found": "Tool '{tool_name}' not found in registry",
+      "invalid_configuration": "Invalid orchestrator configuration",
+      "llm_provider_error": "LLM provider error: {error}",
+      "tool_execution_failed": "Tool execution failed: {error}",
+      "validation_failed": "Input validation failed: {reason}",
+      "security_violation": "Security validation failed: {violation}",
+      "resource_exhausted": "System resources exhausted",
+      "compliance_violation": "Compliance policy violation: {policy}"
+    },
+    "status": {
+      "healthy": "System is healthy and operational",
+      "degraded": "System is experiencing degraded performance",
+      "unhealthy": "System is unhealthy and may be unavailable",
+      "maintenance": "System is under maintenance"
+    }
+  },
+  "compliance": {
+    "gdpr": {
+      "data_processed": "Personal data processed in accordance with GDPR",
+      "consent_required": "User consent required for data processing",
+      "right_to_erasure": "Data deletion requested under right to erasure",
+      "data_portability": "Data export requested under data portability",
+      "breach_notification": "Data breach detected and authorities notified"
+    },
+    "ccpa": {
+      "data_sale_opt_out": "Consumer opted out of personal data sale",
+      "data_deletion": "Consumer requested deletion of personal data",
+      "data_disclosure": "Disclosed categories of personal data collected"
+    },
+    "pdpa": {
+      "consent_withdrawn": "Data subject withdrew consent for processing",
+      "purpose_limitation": "Data processing limited to specified purposes",
+      "data_minimization": "Data collection minimized to necessary purposes"
+    }
+  },
+  "monitoring": {
+    "metrics": {
+      "requests_per_second": "Requests per second",
+      "response_time": "Average response time",
+      "error_rate": "Error rate percentage",
+      "cache_hit_ratio": "Cache hit ratio",
+      "cpu_utilization": "CPU utilization percentage",
+      "memory_usage": "Memory usage percentage",
+      "active_connections": "Active connections count"
+    },
+    "alerts": {
+      "high_error_rate": "High error rate detected: {rate}%",
+      "slow_response_time": "Slow response time detected: {time}ms",
+      "resource_threshold": "Resource utilization above threshold: {resource}",
+      "security_incident": "Security incident detected: {type}"
+    }
+  },
+  "quantum": {
+    "features": {
+      "coherence_maintained": "Quantum coherence maintained across execution",
+      "entanglement_established": "Quantum entanglement established between tools",
+      "superposition_collapsed": "Quantum superposition collapsed to solution",
+      "optimization_complete": "Quantum optimization cycle completed",
+      "prediction_updated": "Quantum prediction model updated",
+      "scaling_prediction": "Quantum scaling prediction: {direction}"
+    }
+  }
+}

@@ -1,0 +1,269 @@
+version: '3.8'
+
+# Global-First Multi-Region Deployment Configuration
+# Supports worldwide deployment with region-specific configurations
+
+services:
+  # US East (Primary)
+  orchestrator-us-east:
+    build: 
+      context: ..
+      dockerfile: deployment/Dockerfile
+    environment:
+      - REGION=us-east-1
+      - ENVIRONMENT=production
+      - GDPR_COMPLIANCE=true
+      - CCPA_COMPLIANCE=true
+      - PRIMARY_REGION=true
+      - REDIS_URL=redis://redis-us-east:6379
+      - DB_URL=postgresql://db-us-east:5432/orchestrator
+      - I18N_DEFAULT_LOCALE=en_US
+    depends_on:
+      - redis-us-east
+      - db-us-east
+    networks:
+      - global-network
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.orchestrator-us.rule=Host(`api-us.async-toolformer.com`)"
+      - "traefik.http.services.orchestrator-us.loadbalancer.server.port=8000"
+
+  # Europe (Frankfurt)
+  orchestrator-eu-central:
+    build: 
+      context: ..
+      dockerfile: deployment/Dockerfile
+    environment:
+      - REGION=eu-central-1
+      - ENVIRONMENT=production
+      - GDPR_COMPLIANCE=true
+      - PDPA_COMPLIANCE=true
+      - PRIMARY_REGION=false
+      - REDIS_URL=redis://redis-eu-central:6379
+      - DB_URL=postgresql://db-eu-central:5432/orchestrator
+      - I18N_DEFAULT_LOCALE=de_DE
+    depends_on:
+      - redis-eu-central
+      - db-eu-central
+    networks:
+      - global-network
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.orchestrator-eu.rule=Host(`api-eu.async-toolformer.com`)"
+      - "traefik.http.services.orchestrator-eu.loadbalancer.server.port=8000"
+
+  # Asia Pacific (Tokyo)
+  orchestrator-ap-northeast:
+    build: 
+      context: ..
+      dockerfile: deployment/Dockerfile
+    environment:
+      - REGION=ap-northeast-1
+      - ENVIRONMENT=production
+      - PDPA_COMPLIANCE=true
+      - PRIMARY_REGION=false
+      - REDIS_URL=redis://redis-ap-northeast:6379
+      - DB_URL=postgresql://db-ap-northeast:5432/orchestrator
+      - I18N_DEFAULT_LOCALE=ja_JP
+    depends_on:
+      - redis-ap-northeast
+      - db-ap-northeast
+    networks:
+      - global-network
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.orchestrator-ap.rule=Host(`api-ap.async-toolformer.com`)"
+      - "traefik.http.services.orchestrator-ap.loadbalancer.server.port=8000"
+
+  # Redis instances per region
+  redis-us-east:
+    image: redis:7-alpine
+    volumes:
+      - redis-us-data:/data
+    networks:
+      - global-network
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+
+  redis-eu-central:
+    image: redis:7-alpine
+    volumes:
+      - redis-eu-data:/data
+    networks:
+      - global-network
+    deploy:
+      replicas: 1
+
+  redis-ap-northeast:
+    image: redis:7-alpine
+    volumes:
+      - redis-ap-data:/data
+    networks:
+      - global-network
+    deploy:
+      replicas: 1
+
+  # Database instances per region with GDPR/compliance features
+  db-us-east:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=orchestrator
+      - POSTGRES_USER=orchestrator
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_INITDB_ARGS=--auth=scram-sha-256
+    volumes:
+      - db-us-data:/var/lib/postgresql/data
+      - ./compliance/init-us.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - global-network
+    secrets:
+      - db_password
+    deploy:
+      replicas: 1
+
+  db-eu-central:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=orchestrator
+      - POSTGRES_USER=orchestrator
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_INITDB_ARGS=--auth=scram-sha-256
+    volumes:
+      - db-eu-data:/var/lib/postgresql/data
+      - ./compliance/init-gdpr.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - global-network
+    secrets:
+      - db_password
+
+  db-ap-northeast:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=orchestrator
+      - POSTGRES_USER=orchestrator
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_INITDB_ARGS=--auth=scram-sha-256
+    volumes:
+      - db-ap-data:/var/lib/postgresql/data
+      - ./compliance/init-pdpa.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - global-network
+    secrets:
+      - db_password
+
+  # Global Load Balancer with Geo-DNS simulation
+  global-loadbalancer:
+    image: traefik:v3.0
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@async-toolformer.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt-data:/letsencrypt
+    networks:
+      - global-network
+    deploy:
+      replicas: 1
+
+  # Compliance & Monitoring Services
+  compliance-monitor:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.compliance
+    environment:
+      - GDPR_ENABLED=true
+      - CCPA_ENABLED=true
+      - PDPA_ENABLED=true
+      - AUDIT_LOG_RETENTION_DAYS=2555  # 7 years for GDPR
+      - DATA_PROCESSOR_AGREEMENT=enabled
+    volumes:
+      - compliance-logs:/app/logs
+    networks:
+      - global-network
+    deploy:
+      replicas: 1
+
+  # Global Metrics & Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus-global.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - global-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=90d'
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-worldmap-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana-global-dashboards:/etc/grafana/provisioning/dashboards
+    networks:
+      - global-network
+
+networks:
+  global-network:
+    driver: overlay
+    attachable: true
+
+volumes:
+  redis-us-data:
+  redis-eu-data:
+  redis-ap-data:
+  db-us-data:
+  db-eu-data:
+  db-ap-data:
+  letsencrypt-data:
+  compliance-logs:
+  prometheus-data:
+  grafana-data:
+
+secrets:
+  db_password:
+    external: true
