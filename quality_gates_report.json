@@ -1,0 +1,45 @@
+{
+  "overall_status": "PASSED",
+  "passed_gates": 5,
+  "total_gates": 5,
+  "success_rate": 1.0,
+  "overall_score": 0.9883714285714286,
+  "total_execution_time_seconds": 0.30652284622192383,
+  "gate_results": [
+    {
+      "name": "Code Execution",
+      "status": "passed",
+      "score": 1.0,
+      "execution_time": 0.306394100189209,
+      "error": null
+    },
+    {
+      "name": "Test Coverage",
+      "status": "passed",
+      "score": 0.9999999999999999,
+      "execution_time": 3.5762786865234375e-05,
+      "error": null
+    },
+    {
+      "name": "Security Scan",
+      "status": "passed",
+      "score": 1.0,
+      "execution_time": 2.4318695068359375e-05,
+      "error": null
+    },
+    {
+      "name": "Performance Benchmarks",
+      "status": "passed",
+      "score": 1.0,
+      "execution_time": 0.20670080184936523,
+      "error": null
+    },
+    {
+      "name": "Documentation",
+      "status": "passed",
+      "score": 0.9418571428571427,
+      "execution_time": 0.0014808177947998047,
+      "error": null
+    }
+  ]
+}
