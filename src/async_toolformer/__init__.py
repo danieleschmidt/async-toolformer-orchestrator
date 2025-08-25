@@ -48,6 +48,35 @@ from .quantum_security import (
     SecurityLevel,
 )
 from .quantum_validation import QuantumValidator, ValidationLevel, ValidationResult
+
+# Generation 4: Autonomous AI Components
+from .autonomous_learning_engine import (
+    AutonomousLearningEngine,
+    PerformancePattern,
+    OptimizationRecommendation,
+    create_autonomous_learning_engine,
+)
+from .advanced_ml_optimizer import (
+    AdvancedMLOptimizer,
+    MLPrediction,
+    OptimizationExperiment,
+    create_advanced_ml_optimizer,
+)
+from .self_adaptive_orchestrator import (
+    SelfAdaptiveOrchestrator,
+    AdaptationType,
+    AdaptationRule,
+    EvolutionGenome,
+    create_self_adaptive_orchestrator,
+)
+from .research_experimental_framework import (
+    ResearchExperimentalFramework,
+    ExperimentType,
+    ExperimentalCondition,
+    ResearchExperiment,
+    create_research_experimental_framework,
+)
+
 from .tools import (
     Tool,
     ToolChain,
@@ -80,6 +109,26 @@ __all__ = [
     "PerformanceMetrics",
     "QuantumConcurrencyManager",
     "SynchronizationType",
+    # Generation 4 Autonomous AI Components
+    "AutonomousLearningEngine",
+    "PerformancePattern",
+    "OptimizationRecommendation",
+    "create_autonomous_learning_engine",
+    "AdvancedMLOptimizer",
+    "MLPrediction",
+    "OptimizationExperiment",
+    "create_advanced_ml_optimizer",
+    "SelfAdaptiveOrchestrator",
+    "AdaptationType",
+    "AdaptationRule",
+    "EvolutionGenome",
+    "create_self_adaptive_orchestrator",
+    "ResearchExperimentalFramework",
+    "ExperimentType",
+    "ExperimentalCondition",
+    "ResearchExperiment",
+    "create_research_experimental_framework",
+    # Core Tools
     "Tool",
     "ToolChain",
     "ToolResult",
