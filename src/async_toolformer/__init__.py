@@ -4,6 +4,60 @@ __version__ = "0.1.0"
 __author__ = "Daniel Schmidt"
 __email__ = "async-tools@yourdomain.com"
 
+from .advanced_ml_optimizer import (
+    AdvancedMLOptimizer,
+    MLPrediction,
+    OptimizationExperiment,
+    create_advanced_ml_optimizer,
+)
+
+# Generation 4: Autonomous AI Components
+from .autonomous_learning_engine import (
+    AutonomousLearningEngine,
+    OptimizationRecommendation,
+    PerformancePattern,
+    create_autonomous_learning_engine,
+)
+
+# Generation 5: Quantum Leap Components
+from .quantum_quality_gates import (
+    QuantumQualityGateOrchestrator,
+    QuantumQualityLevel,
+    ValidationDimension,
+    QuantumValidationResult,
+    create_quantum_quality_gate_orchestrator,
+)
+from .autonomous_intelligence_engine import (
+    AutonomousIntelligenceEngine,
+    IntelligenceLevel,
+    DecisionDomain,
+    AutonomousDecision,
+    create_autonomous_intelligence_engine,
+)
+from .research_innovation_framework import (
+    ResearchInnovationFramework,
+    ResearchDomain,
+    InnovationLevel,
+    ResearchExperiment,
+    create_research_innovation_framework,
+)
+from .zero_trust_security_framework import (
+    ZeroTrustSecurityFramework,
+    ThreatLevel,
+    SecurityEvent,
+    SecurityContext,
+    ThreatDetection,
+    create_zero_trust_security_framework,
+)
+from .global_edge_orchestrator import (
+    GlobalEdgeOrchestrator,
+    EdgeRegion,
+    ScalingStrategy,
+    ResourceType,
+    WorkloadRequest,
+    DeploymentPlan,
+    create_global_edge_orchestrator,
+)
 from .config import (
     BackpressureStrategy,
     CancellationStrategy,
@@ -48,35 +102,20 @@ from .quantum_security import (
     SecurityLevel,
 )
 from .quantum_validation import QuantumValidator, ValidationLevel, ValidationResult
-
-# Generation 4: Autonomous AI Components
-from .autonomous_learning_engine import (
-    AutonomousLearningEngine,
-    PerformancePattern,
-    OptimizationRecommendation,
-    create_autonomous_learning_engine,
-)
-from .advanced_ml_optimizer import (
-    AdvancedMLOptimizer,
-    MLPrediction,
-    OptimizationExperiment,
-    create_advanced_ml_optimizer,
-)
-from .self_adaptive_orchestrator import (
-    SelfAdaptiveOrchestrator,
-    AdaptationType,
-    AdaptationRule,
-    EvolutionGenome,
-    create_self_adaptive_orchestrator,
-)
 from .research_experimental_framework import (
-    ResearchExperimentalFramework,
-    ExperimentType,
     ExperimentalCondition,
+    ExperimentType,
     ResearchExperiment,
+    ResearchExperimentalFramework,
     create_research_experimental_framework,
 )
-
+from .self_adaptive_orchestrator import (
+    AdaptationRule,
+    AdaptationType,
+    EvolutionGenome,
+    SelfAdaptiveOrchestrator,
+    create_self_adaptive_orchestrator,
+)
 from .tools import (
     Tool,
     ToolChain,
@@ -128,6 +167,35 @@ __all__ = [
     "ExperimentalCondition",
     "ResearchExperiment",
     "create_research_experimental_framework",
+    # Generation 5 Quantum Leap Components
+    "QuantumQualityGateOrchestrator",
+    "QuantumQualityLevel",
+    "ValidationDimension",
+    "QuantumValidationResult",
+    "create_quantum_quality_gate_orchestrator",
+    "AutonomousIntelligenceEngine",
+    "IntelligenceLevel",
+    "DecisionDomain",
+    "AutonomousDecision",
+    "create_autonomous_intelligence_engine",
+    "ResearchInnovationFramework",
+    "ResearchDomain",
+    "InnovationLevel",
+    "ResearchExperiment",
+    "create_research_innovation_framework",
+    "ZeroTrustSecurityFramework",
+    "ThreatLevel",
+    "SecurityEvent",
+    "SecurityContext",
+    "ThreatDetection",
+    "create_zero_trust_security_framework",
+    "GlobalEdgeOrchestrator",
+    "EdgeRegion",
+    "ScalingStrategy",
+    "ResourceType",
+    "WorkloadRequest",
+    "DeploymentPlan",
+    "create_global_edge_orchestrator",
     # Core Tools
     "Tool",
     "ToolChain",
@@ -152,4 +220,18 @@ __all__ = [
     "TimeoutError",
     "ConfigurationError",
     "SpeculationError",
+]
+
+# Version information
+__generation__ = "5"
+__codename__ = "Quantum Leap"
+__features__ = [
+    "Quantum Quality Gates",
+    "Autonomous Intelligence Engine",
+    "Research Innovation Framework", 
+    "Zero Trust Security",
+    "Global Edge Orchestration",
+    "ML-Driven Optimization",
+    "Predictive Analytics",
+    "Self-Healing Systems"
 ]
