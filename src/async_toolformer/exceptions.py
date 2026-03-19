@@ -1,114 +1,48 @@
-"""Custom exceptions for the Async Toolformer Orchestrator."""
+"""Exceptions for the Async Toolformer Orchestrator."""
 
-from typing import Any
+from __future__ import annotations
 
 
 class OrchestratorError(Exception):
-    """Base exception for all orchestrator-related errors."""
+    """Base exception."""
 
-    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
-        super().__init__(message)
-        self.details = details or {}
+
+class ToolNotFoundError(OrchestratorError):
+    """Tool not registered."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(f"Tool not registered: {name!r}")
+        self.name = name
 
 
 class ToolExecutionError(OrchestratorError):
-    """Exception raised when a tool execution fails."""
+    """Tool raised during execution."""
 
-    def __init__(
-        self,
-        tool_name: str,
-        message: str,
-        original_error: Exception | None = None,
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        super().__init__(message, details)
+    def __init__(self, tool_name: str, cause: BaseException) -> None:
+        super().__init__(f"Tool {tool_name!r} failed: {cause}")
         self.tool_name = tool_name
-        self.original_error = original_error
+        self.cause = cause
+
+
+class ToolTimeoutError(OrchestratorError):
+    """Tool exceeded its timeout."""
+
+    def __init__(self, tool_name: str, timeout_s: float) -> None:
+        super().__init__(f"Tool {tool_name!r} timed out after {timeout_s}s")
+        self.tool_name = tool_name
+        self.timeout_s = timeout_s
 
 
 class RateLimitError(OrchestratorError):
-    """Exception raised when rate limits are exceeded."""
+    """Rate limit exceeded and wait was rejected."""
 
-    def __init__(
-        self,
-        service: str,
-        limit_type: str,
-        retry_after: float | None = None,
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        message = f"Rate limit exceeded for {service} ({limit_type})"
-        if retry_after:
-            message += f". Retry after {retry_after}s"
-        super().__init__(message, details)
-        self.service = service
-        self.limit_type = limit_type
+    def __init__(self, tool_name: str, retry_after: float) -> None:
+        super().__init__(
+            f"Rate limit for {tool_name!r} exceeded; retry after {retry_after:.2f}s"
+        )
+        self.tool_name = tool_name
         self.retry_after = retry_after
 
 
-class TimeoutError(OrchestratorError):
-    """Exception raised when operations timeout."""
-
-    def __init__(
-        self,
-        operation: str,
-        timeout_seconds: float,
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        message = f"Operation '{operation}' timed out after {timeout_seconds}s"
-        super().__init__(message, details)
-        self.operation = operation
-        self.timeout_seconds = timeout_seconds
-
-
-class ConfigurationError(OrchestratorError):
-    """Exception raised for configuration-related errors."""
-
-    def __init__(
-        self,
-        parameter: str,
-        message: str,
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        super().__init__(f"Configuration error for '{parameter}': {message}", details)
-        self.parameter = parameter
-
-
-class SpeculationError(OrchestratorError):
-    """Exception raised during speculative execution."""
-
-    def __init__(
-        self,
-        message: str,
-        speculation_id: str | None = None,
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        super().__init__(message, details)
-        self.speculation_id = speculation_id
-
-
-class BranchCancellationError(OrchestratorError):
-    """Exception raised during branch cancellation."""
-
-    def __init__(
-        self,
-        message: str,
-        branch_id: str | None = None,
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        super().__init__(message, details)
-        self.branch_id = branch_id
-
-
-class ToolChainError(OrchestratorError):
-    """Exception raised during tool chain execution."""
-
-    def __init__(
-        self,
-        chain_name: str,
-        message: str,
-        original_error: Exception | None = None,
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        super().__init__(f"Chain '{chain_name}': {message}", details)
-        self.chain_name = chain_name
-        self.original_error = original_error
+class BranchCancelledError(OrchestratorError):
+    """Branch was explicitly cancelled by the caller."""
